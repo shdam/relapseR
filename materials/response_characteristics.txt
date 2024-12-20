@@ -1,0 +1,5 @@
+patient	relapse	relapse_time
+A	TRUE	1.5
+B	NA	NA
+C	TRUE	13
+D	FALSE	NA

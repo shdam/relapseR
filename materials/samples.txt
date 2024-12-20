@@ -1,0 +1,21 @@
+patient	sample	strand	file
+C	14d	f	CRR025978_f1.fq.gz
+C	14d	r	CRR025978_r2.fq.gz
+C	0d	f	CRR025977_f1.fq.gz
+C	0d	r	CRR025977_r2.fq.gz
+D	14d	f	CRR025976_f1.fq.gz	
+D	14d	r	CRR025976_r2.fq.gz
+D	0d	f	CRR025975_f1.fq.gz
+D	0d	r	CRR025975_r2.fq.gz
+A	14d	f	CRR025974_f1.fq.gz
+A	14d	r	CRR025974_r2.fq.gz
+A	0d	f	CRR025973_f1.fq.gz
+A	0d	r	CRR025973_r2.fq.gz
+B	14d	f	CRR025972_f1.fq.gz
+B	14d	r	CRR025972_r2.fq.gz
+B	0d	f	CRR025971_f1.fq.gz
+B	0d	r	CRR025971_r2.fq.gz
+
+wget ftp://download.big.ac.cn/gsa/CRA000746/CRR02597[1-8]/CRR02597*_f1.fq.gz
+wget ftp://download.big.ac.cn/gsa/CRA000746/CRR02597[1-8]/CRR02597*_r2.fq.gz
+

@@ -1,0 +1,202 @@
+---
+title: "PSI plot of TCGA-DLPFC"
+author: "Søren Helweg Dam"
+date: "2024-12-17"
+output: html_document
+---
+
+## Libraries
+
+```{r}
+library("snapcount")
+library("magrittr")
+library("dplyr")
+library("ggplot2")
+library("ggridges")
+```
+
+
+## TCGA-DLBCL
+
+```{r}
+message("Computing TCGA PSI")
+# https://www.ensembl.org/Homo_sapiens/Transcript/Exons?db=core;g=ENSG00000177455;r=16:28931971-28939342;t=ENST00000538922
+
+## TCGA
+# left inclusion query
+lq <- QueryBuilder(compilation="tcga", regions="chr16:28932089-28932345") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+# right inclusion query
+rq <- QueryBuilder(compilation="tcga", regions="chr16:28932613-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+# exclusion query
+ex <- QueryBuilder(compilation="tcga", regions="chr16:28932089-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+
+psi_tcga <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
+```
+
+### Metadata
+
+```{r}
+message("Acquiring TCGA metadata")
+md <- snapcount:::get_compilation_metadata(compilation = "tcga")
+metadata <- tibble::tibble(sample_id = md$rail_id, 
+                           Cancer = md$gdc_cases.tissue_source_site.project,
+                           project = md$gdc_cases.project.project_id,
+                           Tissue = md$gdc_cases.project.primary_site,
+                           sample_code = md$gdc_cases.samples.submitter_id,
+                           gender = md$gdc_cases.demographic.gender,
+                           outcome = md$cgc_case_primary_therapy_outcome_success,
+                           tumor_status = md$cgc_case_tumor_status,
+                           age = md$xml_age_at_initial_pathologic_diagnosis,
+                           vital = md$cgc_case_vital_status) |> 
+  dplyr::filter(
+    stringr::str_detect(stringr::str_to_lower(Cancer), "lymph")
+    ) 
+```
+
+### Subset to TCGA-DLPFC
+
+```{r}
+# PSI of TCGA-DLPFC
+psi_DLPFC <- psi_tcga %>% 
+  dplyr::filter(psi != -1) %>% 
+  semi_join(metadata, by = "sample_id") %>% 
+  left_join(metadata, by = "sample_id") %>% 
+  mutate(type = "TCGA DLBCL")
+
+```
+
+### Age distribution of high and low PSI
+
+```{r}
+# Sample data
+psi_low <- dplyr::filter(psi_DLPFC, psi < 0.95)
+psi_high <- dplyr::filter(psi_DLPFC, psi >= 0.95)
+group <- c(rep("Low", 50), rep("High", 50))
+
+ages <- c(rnorm(50, mean = 30, sd = 5), rnorm(50, mean = 35, sd = 6))
+
+# Boxplot
+boxplot(ages ~ group, main = "Age Distribution by Group", xlab = "Group", ylab = "Age")
+
+```
+
+## GTEx
+
+```{r PSI}
+message("Computing GTEx PSI")
+## GTEx
+#Build new query against GTEx
+# left inclusion query
+lq_gtex <- QueryBuilder(compilation="gtexv2", regions="chr16:28932089-28932345") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+# right inclusion query
+rq_gtex <- QueryBuilder(compilation="gtexv2", regions="chr16:28932613-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+# exclusion query
+ex_gtex <- QueryBuilder(compilation="gtexv2", regions="chr16:28932089-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+
+psi_gtex <- percent_spliced_in(list(lq_gtex), list(rq_gtex), list(ex_gtex), min_count=20)
+
+
+## Tissue specific PSIs
+ts <- tissue_specificity(list(lq_gtex, rq_gtex, ex_gtex))
+blood_sample <- ts %>% filter(tissue == "Blood")
+bm_sample <- ts %>% filter(tissue == "Bone Marrow")
+spleen_sample <- ts %>% filter(tissue == "Spleen")
+
+
+psi_gtex_blood <- psi_gtex %>% filter(psi != -1) %>% 
+  semi_join(blood_sample, by="sample_id") %>% 
+  mutate(type = "GTEx Blood")
+
+psi_gtex_spleen <- psi_gtex %>% filter(psi != -1) %>% 
+  semi_join(spleen_sample, by="sample_id") %>% 
+  mutate(type = "GTEx Spleen")
+```
+
+
+
+## PSI plot
+
+```{r}
+message("Creating PSI plot")
+colors <- c("hotpink3", "darkblue", "slategray")
+psi_plot <- psi_DLPFC %>%
+  bind_rows(psi_gtex_blood) %>%
+  bind_rows(psi_gtex_spleen) %>%
+  ggplot() +
+  aes(x = psi, fill = type, color = type, y = type) +
+  geom_density_ridges(alpha = 0.4, quantile_lines = TRUE, quantiles = 2) +
+  theme_classic(base_size = 18) +
+  scale_fill_manual(values = colors) +
+  scale_color_manual(values = colors) +
+  labs(color = "Tissue",
+       fill = "Tissue",
+       x = "Fraction of CD19 transcripts containing Exon2.",
+       y = "") +
+  theme(legend.position="none") +
+  xlim(0.6, 1.05)
+psi_plot
+ggsave(psi_plot, filename = "../figs/PSI_TCGA-DLPFC.png", width = 10, height = 4)
+
+```
+
+## SRA 
+```{r}
+
+## SRA
+
+md_sra <- snapcount:::get_compilation_metadata(compilation = "srav3h") |> 
+  dplyr::filter(library_layout == "paired")
+
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "B-ALL")) |> dim()
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "DLBCL")) |> dim()
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "lymph node")) |> dim()
+
+
+lq <- QueryBuilder(compilation="srav3h", regions="chr16:28932089-28932345") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#right inclusion query
+rq <- QueryBuilder(compilation="srav3h", regions="chr16:28932613-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#exclusion query
+ex <- QueryBuilder(compilation="srav3h", regions="chr16:28932089-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+
+psi_sra <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
+
+md_sra_ball <- md_sra |> 
+  dplyr::filter(stringr::str_detect(study_title, "B-ALL"))
+psi_sra_ball <- psi_sra %>% 
+  dplyr::filter(psi != -1) %>% 
+  semi_join(md_sra_ball, by=c("sample_id" = "rail_id")) %>% 
+  mutate(type = "SRA B-ALL")
+
+md_sra_aml <- md_sra |> 
+  dplyr::filter(stringr::str_detect(study_title, "AML"))
+psi_sra_aml <- psi_sra %>% 
+  dplyr::filter(psi != -1) %>%
+  semi_join(md_sra_aml, by=c("sample_id" = "rail_id")) %>% 
+  mutate(type = "SRA AML")
+
+md_sra_dlbcl <- md_sra |> 
+  dplyr::filter(stringr::str_detect(study_title, "DLBCL"))
+psi_sra_dlbcl <- psi_sra %>% 
+  dplyr::filter(psi != -1) %>%
+  semi_join(md_sra_dlbcl, by=c("sample_id" = "rail_id")) %>% 
+  mutate(type = "SRA DLBCL")
+
+```

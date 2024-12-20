@@ -1,0 +1,98 @@
+---
+title: "Mapping raw reads"
+author: "Søren Helweg Dam"
+date: "2024-12-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The data 
+
+Data used is from [Zhang et. al, 2019](https://doi.org/10.1016/j.gpb.2018.12.008).
+
+
+### Downloading the data
+
+Raw reads
+
+```{sh raw}
+echo "Downloading raw reads"
+for id in {1..8}
+do
+  wget ftp://download.big.ac.cn/gsa/CRA000746/CRR02597${id}/CRR02597${id}_f1.fq.gz
+  wget ftp://download.big.ac.cn/gsa/CRA000746/CRR02597${id}/CRR02597${id}_r2.fq.gz
+done
+```
+
+
+### fastp preprocessing
+
+```{sh trim}
+echo "Trimming reads"
+alias fastp='/home/ctools/fastp/fastp'
+mkdir trimmed
+
+for id in {1..8}
+do
+forward=CRR02597${id}_f1.fq.gz
+reverse=CRR02597${id}_r2.fq.gz
+
+fastp -i fastq/$forward -I fastq/$reverse -o trimmed/$forward -O trimmed/$reverse --detect_adapter_for_pe -c --cut_front --cut_right
+done
+
+```
+
+
+## STAR ----
+
+Download reference genome Release 107 and map reads.
+
+```{sh align}
+echo "Aligning reads with STAR"
+# Download assembly reference
+cd homo_sapiens
+# wget ftp://ftp.ensembl.org/pub/release-77/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+wget http://ftp.ensembl.org/pub/release-107/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa.gz
+
+wget http://ftp.ensembl.org/pub/release-107/gtf/homo_sapiens/Homo_sapiens.GRCh38.107.gtf.gz
+
+gunzip *.gz
+
+mkdir ../ref
+
+# Index genome
+STAR --runMode genomeGenerate --genomeDir ../ref/ --genomeFastaFiles Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa --sjdbGTFfile Homo_sapiens.GRCh38.107.gtf --runThreadN 8
+
+mkdir mapped
+cd trimmed
+for id in {1..8}
+do
+forward=CRR02597${id}_f1.fq.gz
+reverse=CRR02597${id}_r2.fq.gz
+STAR --runMode alignReads --runThreadN 8 --genomeDir ../ref/ --outSAMtype BAM SortedByCoordinate --readFilesIn ${forward} ${reverse} --readFilesCommand gunzip -c --outFileNamePrefix ../mapped/CRR02597${id}
+done
+
+cd ../mapped
+mkdir ../bam
+mv *.bam ../bam
+cd ../bam
+for file in *.bam
+do
+samtools index $file
+done
+```
+
+
+## Count mapped reads
+
+```{sh count}
+echo "Counting mapped reads"
+for file in *.bam
+do 
+samtools view -c -F 4 $file
+done
+```
+

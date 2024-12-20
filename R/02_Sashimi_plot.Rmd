@@ -1,0 +1,51 @@
+---
+title: "Sashimi plot of mapped reads"
+author: "Søren Helweg Dam"
+date: "2024-12-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## BAM ----
+
+Create a BAM list for the Sashimi plot
+
+```{sh}
+echo "Creating BAM list"
+echo "ID  File  Patient Color
+CRR025973	/home/projects/shd/relapseR/raw_data/bam/CRR025973Aligned.sortedByCoord.out.bam	Patient_A	1
+CRR025971	/home/projects/shd/relapseR/raw_data/bam/CRR025971Aligned.sortedByCoord.out.bam	Patient_B	3
+CRR025977	/home/projects/shd/relapseR/raw_data/bam/CRR025977Aligned.sortedByCoord.out.bam	Patient_C	5
+CRR025975	/home/projects/shd/relapseR/raw_data/bam/CRR025975Aligned.sortedByCoord.out.bam	Patient_D	7
+CRR025974	/home/projects/shd/relapseR/raw_data/bam/CRR025974Aligned.sortedByCoord.out.bam	Patient_A	2
+CRR025972	/home/projects/shd/relapseR/raw_data/bam/CRR025972Aligned.sortedByCoord.out.bam	Patient_B	4
+CRR025978	/home/projects/shd/relapseR/raw_data/bam/CRR025978Aligned.sortedByCoord.out.bam	Patient_C	6
+CRR025976	/home/projects/shd/relapseR/raw_data/bam/CRR025976Aligned.sortedByCoord.out.bam	Patient_D	8" > /home/projects/shd/relapseR/raw_data/bam/bam_list.tsv
+# rm /home/projects/shd/relapseR/raw_data/bam/bam_list.tsv
+# vim /home/projects/shd/relapseR/raw_data/bam/bam_list.tsv
+```
+
+
+## Sashimi plot
+
+```{sh}
+echo "Creating sashimi plot"
+cd /home/projects/shd/tools/
+mkdir -p figs
+
+echo "#4EEE94
+#FF0000
+#FFA500
+#0000FF
+#8FBC8F
+#CD6090
+#EECFA1
+#9FB6CD" > ../relapseR/raw_data/bam/colors.tsv
+
+python ggsashimi.py -b ../relapseR/raw_data/bam/bam_list.tsv -c 16:28931696-28933634 -o ../relapseR/figs/sashimi -g ../relapseR/raw_data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf -L 3 -P ../relapseR/raw_data/bam/colors.tsv -C 4 --base-size 22
+
+```

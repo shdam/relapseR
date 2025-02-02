@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Load rMATS
+module load rmats-turbo/4.1.1
+
 # Define variables
 GTF="ref/Homo_sapiens.GRCh38.107.gtf"
 BAM_DIR="bam"

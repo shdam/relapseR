@@ -1,10 +1,11 @@
 #!/bin/bash
 
 echo "Trimming reads"
-alias fastp='/home/ctools/fastp/fastp'
+#alias fastp='/home/ctools/fastp/fastp'
+cd /home/projects/dp_immunoth/data/iCOPE
 mkdir -p trimmed
-
-for subfolder in data/*; do
+# ./*
+for subfolder in 1; do
   if [ -d "$subfolder" ]; then
     # Find the forward and reverse files
     forward=$(find "$subfolder" -type f -name "*.R1.fq.gz")

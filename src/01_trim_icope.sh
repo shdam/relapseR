@@ -5,7 +5,7 @@ echo "Trimming reads"
 cd /home/projects/dp_immunoth/data/iCOPE
 mkdir -p trimmed
 # ./*
-for subfolder in 1; do
+for subfolder in ./11021_000001.T.T02.S2; do
   if [ -d "$subfolder" ]; then
     # Find the forward and reverse files
     forward=$(find "$subfolder" -type f -name "*.R1.fq.gz")

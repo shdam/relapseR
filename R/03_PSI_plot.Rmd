@@ -200,3 +200,33 @@ psi_sra_dlbcl <- psi_sra %>%
   mutate(type = "SRA DLBCL")
 
 ```
+
+### PSI
+
+```{r}
+message("Creating PSI plot")
+colors <- c("hotpink3", "darkblue", "slategray", "red", "darkgreen", "lightblue")
+psi_plot <- psi_DLPFC %>%
+  bind_rows(psi_gtex_blood) %>%
+  bind_rows(psi_gtex_spleen) %>%
+  bind_rows(psi_sra_ball) %>%
+  bind_rows(psi_sra_aml) %>%
+  bind_rows(psi_sra_dlbcl) %>%
+  ggplot() +
+  aes(x = psi, fill = type, color = type) +
+  # geom_density_ridges(alpha = 0.4, quantile_lines = TRUE, quantiles = 2) +
+  geom_histogram(binwidth = 0.05, alpha = 0.7) +
+  facet_wrap(~ type, scales = "free", ncol = 3) +
+  theme_classic(base_size = 18) +
+  scale_fill_manual(values = colors) +
+  scale_color_manual(values = colors) +
+  labs(color = "Tissue",
+       fill = "Tissue",
+       x = "Fraction of CD19 transcripts containing Exon2.",
+       y = "") +
+  theme(legend.position="none") +
+  xlim(0.6, 1.05)
+psi_plot
+ggsave(psi_plot, filename = "../figs/PSI_SRA.png", width = 10, height = 4)
+
+```

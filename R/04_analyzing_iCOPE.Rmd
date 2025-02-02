@@ -1,0 +1,92 @@
+---
+title: "Mapping iCOPE patient data"
+author: "Søren Helweg Dam"
+date: "Last updated: `r format(Sys.Date(), '%Y.%m.%d')`"
+output: 
+  prettydoc::html_pretty:
+  theme: hpstr
+  highlight: vignette
+vignette: >
+  %\VignetteIndexEntry{cyDefine}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+format: html
+editor: source
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The data 
+
+iCOPE patient data.
+
+
+### fastp preprocessing
+
+
+```{r fastp, results='asis', echo=FALSE}
+# Read the content of the script.sh file
+file_content <- readLines("../src/trim_icope.sh")
+
+# Print the content as code
+cat("```sh\n", paste(file_content, collapse = "\n"), "\n```", sep = "")
+
+```
+
+## STAR
+
+Download reference genome Release 107 and map reads.
+
+```{r star, results='asis', echo=FALSE}
+# Read the content of the script.sh file
+file_content <- readLines("../src/map_icope.sh")
+
+# Print the content as code
+cat("```sh\n", paste(file_content, collapse = "\n"), "\n```", sep = "")
+
+```
+
+## rMATS
+
+```{r rmats, results='asis', echo=FALSE}
+# Read the content of the script.sh file
+file_content <- readLines("../src/rmats_icope.sh")
+
+# Print the content as code
+cat("```sh\n", paste(file_content, collapse = "\n"), "\n```", sep = "")
+
+```
+
+### PSI
+
+```{r psi}
+# Load the libraries
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+# Load the PSI file
+psi_file <- "rMATS_output/CD19_exon2_PSI.txt"
+psi_data <- read_tsv(psi_file)
+
+# Print the first few rows of the data to understand its structure
+head(psi_data)
+
+# Assuming the PSI data has columns for sample IDs and PSI values
+# If the data is in wide format, you may need to reshape it to long format
+psi_data_long <- psi_data %>%
+  pivot_longer(cols = starts_with("Sample"), names_to = "Sample", values_to = "PSI")
+head(psi_data_long)
+
+
+# Density plot of PSI
+ggplot(psi_data_long, aes(x = PSI)) +
+  geom_density(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of PSI Values for CD19 Exon 2 Across Samples",
+       x = "PSI",
+       y = "Density") +
+  theme_minimal()
+
+```

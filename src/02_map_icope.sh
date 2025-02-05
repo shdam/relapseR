@@ -51,15 +51,16 @@ for file in trimmed/*.R1.fq.gz; do
   fi
 done
 
-cd mapped
-mkdir -p ../bam
-mv *.bam ../bam
-cd ../bam
+
+mkdir -p bam
+mv mapped/*.bam bam
+cd bam
 
 echo "Indexing mapped reads with samtools"
-for file in *.bam; do
-  if [ ! -f "$(basename "$forward").bai" ]; then
-        samtools index "$file"
+for file in bam/*.bam; do
+  if [ ! -f bam/$(basename "$file").bai ]; then
+    echo bam/$(basename "$file").bai
+        #samtools index "$file"
       else
         echo "$file already indexed"
       fi

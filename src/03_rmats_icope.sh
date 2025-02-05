@@ -3,17 +3,15 @@
 cd /home/projects/dp_immunoth/data/iCOPE
 
 GTF="../homo_sapiens/Homo_sapiens.GRCh38.107.gtf"
-BAM_DIR="bam"
-OUTPUT_DIR="rmats"
 
 # Create output directory
-mkdir -p $OUTPUT_DIR
+mkdir -p rmats
 
 # Check index
 
-for file in "$BAM_DIR/*.bam"; do
-  if [ ! -f "$(basename $file).bai" ]; then
-    echo "Indexing mapped reads with samtools"
+echo "Indexing mapped reads with samtools"
+for file in bam/*.bam; do
+  if [ ! -f bam/$(basename "$file").bai ]; then
     samtools index "$file"
   else
     echo "$file already indexed"
@@ -21,16 +19,14 @@ for file in "$BAM_DIR/*.bam"; do
 done
 
 # Run rMATS
-for file in "$BAM_DIR/*.bam"; do
-
-  base_file="$(basename $file)"
-  tmp_file="${base_file%_Aligned.sortedByCoord.out.bam}"
-  if [ ! -f "$OUTPUT_DIR/tmp_file/SE.MATS.JC.txt" ]; then
-    echo "Running rMATS on $tmp_file"
-    echo "$OUTPUT_DIR/$tmp_file"
-    rmats.py --b1 $file --gtf $GTF --od "$OUTPUT_DIR/$tmp_file" --tmp "$OUTPUT_DIR/$tmp_file"_tmp --nthread 40 --statoff  --readLength 255 --variable-read-length
+for file in bam/*.bam; do
+  base_file=$(basename "$file")
+  SAMPLE="${base_file%_Aligned.sortedByCoord.out.bam}"
+  if [ ! -f "rmats/$SAMPLE/SE.MATS.JC.txt" ]; then
+    echo "Running rMATS on $SAMPLE"
+    rmats.py --b1 <(zcat "$file") --gtf $GTF --od "rmats/$SAMPLE" --tmp .rmats --nthread 40 --statoff  --readLength 255 --variable-read-length
   else
-    echo "$file already indexed"
+    echo "rMATS already run on $file"
   fi
 done
 

@@ -41,7 +41,7 @@ for file in trimmed/*.R1.fq.gz; do
     base=$(basename "$forward" .R1.fq.gz)
     
     # Check if the output files already exist
-      if [ ! -f "mapped/$base_Aligned.sortedByCoord.out.bam" ]; then
+      if [ ! -f "mapped/$base_Aligned.sortedByCoord.out.bam" ] || [ ! -f "bam/$base_Aligned.sortedByCoord.out.bam" ]; then
         STAR --runMode alignReads --runThreadN 38 --genomeDir ../homo_sapiens/ --outSAMtype BAM SortedByCoordinate --readFilesIn "$forward" "$reverse" --readFilesCommand gunzip -c --outFileNamePrefix mapped/"$base"_
       else
         echo "$base already mapped"
@@ -57,6 +57,10 @@ mv *.bam ../bam
 cd ../bam
 
 echo "Indexing mapped reads with samtools"
-for file in *.bam; do
-  samtools index "$file"
+for file in bam/*.bam; do
+  if [ ! -f "$(basename "$forward").bai" ]; then
+        samtools index "$file"
+      else
+        echo "$file already indexed"
+      fi
 done

@@ -3,7 +3,7 @@
 ### Account information
 #PBS -W group_list=dp_immunoth -A dp_immunoth
 ### Job name (comment out the next line to get the name of the script used as the job name)
-##PBS -N Trim_icope
+##PBS -N Map_icope
 ### Output files (comment out the next 2 lines to get the job name used instead)
 #PBS -o log/$PBS_JOBNAME.out
 #PBS -e log/$PBS_JOBNAME.err
@@ -23,7 +23,7 @@
 # Go to the directory from where the job was submitted (initial directory is $HOME)
 cd $PBS_O_WORKDIR
 # Load all required modules for the job
-module load gcc/7.2.0 intel/perflibs fastp/0.23.4
+module load gcc/7.2.0 intel/perflibs star/2.7.11b
 
 ### Here follows the user commands:
 # Define number of processors
@@ -31,5 +31,5 @@ NPROCS=`wc -l < $PBS_NODEFILE`
 echo This job has allocated $NPROCS nodes
 
 
-/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/01_trim_icope.sh
+/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/02_map_icope.sh
 

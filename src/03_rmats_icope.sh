@@ -10,14 +10,15 @@ OUTPUT_DIR="rmats"
 mkdir -p $OUTPUT_DIR
 
 # Check index
-echo "Indexing mapped reads with samtools"
+
 for file in "$BAM_DIR/*.bam"; do
   if [ ! -f "$(basename "$forward").bai" ]; then
-      samtools index "$file"
-    else
-      echo "$file already indexed"
-    fi
+    echo "Indexing mapped reads with samtools"
+    # samtools index "$file"
+  else
+    echo "$file already indexed"
+  fi
 done
 
 # Run rMATS
-rmats.py --b1 $BAM_DIR/*.bam --gtf $GTF --od $OUTPUT_DIR --t paired --nthread 38 --statoff
+rmats.py --b1 $BAM_DIR/*.bam --gtf $GTF --od $OUTPUT_DIR --nthread 40 --statoff

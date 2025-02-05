@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd /home/projects/dp_immunoth/data/iCOPE
+
 GTF="homo_sapiens/Homo_sapiens.GRCh38.107.gtf"
 BAM_DIR="bam"
 OUTPUT_DIR="rmats"

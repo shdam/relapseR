@@ -24,7 +24,7 @@
 cd $PBS_O_WORKDIR
 # Load all required modules for the job
 module load anaconda2/4.4.0 mamba-org/mamba/0.24.0 python/3.12.0
-mamba activate outrigger-env
+
 
 
 ### Here follows the user commands:

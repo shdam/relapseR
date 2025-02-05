@@ -7,3 +7,10 @@
 dev
 inst
 CRR*
+.Rsubread*
+GDCdata/
+gdc*
+MANIFEST.txt
+results/
+raw_data/
+*.html

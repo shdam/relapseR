@@ -5,7 +5,7 @@ echo "Trimming reads"
 cd /home/projects/dp_immunoth/data/iCOPE
 mkdir -p trimmed
 # ./*
-for subfolder in ./11021_000001.T.T02.S2; do
+for subfolder in ./RNAseq/11021_000001.T.T02.S2; do
   if [ -d "$subfolder" ]; then
     # Find the forward and reverse files
     forward=$(find "$subfolder" -type f -name "*.R1.fq.gz")
@@ -20,7 +20,7 @@ for subfolder in ./11021_000001.T.T02.S2; do
       # Run fastp
       fastp -i "$forward" -I "$reverse" -o "$trimmed_forward" -O "$trimmed_reverse" --detect_adapter_for_pe -c --cut_front --cut_right
     else
-      echo "Warning: Missing forward or reverse file in $subfolder"
+      echo "Warning: Missing forward or reverse file in $subfolder" >> log/out
     fi
   fi
 done

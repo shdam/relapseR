@@ -20,4 +20,4 @@ for file in "$BAM_DIR/*.bam"; do
 done
 
 # Run rMATS
-rmats.py --b1 $BAM_DIR/*.bam --gtf $GTF --od $OUTPUT_DIR --t paired --nthread 38
+rmats.py --b1 $BAM_DIR/*.bam --gtf $GTF --od $OUTPUT_DIR --t paired --nthread 38 --statoff

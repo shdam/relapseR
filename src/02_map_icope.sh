@@ -57,7 +57,7 @@ mv *.bam ../bam
 cd ../bam
 
 echo "Indexing mapped reads with samtools"
-for file in bam/*.bam; do
+for file in *.bam; do
   if [ ! -f "$(basename "$forward").bai" ]; then
         samtools index "$file"
       else

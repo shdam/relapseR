@@ -13,10 +13,10 @@ mkdir -p $OUTPUT_DIR
 echo "Indexing mapped reads with samtools"
 for file in bam/*.bam; do
   if [ ! -f "$(basename "$forward").bai" ]; then
-        samtools index "$file"
-      else
-        echo "$file already indexed"
-      fi
+      samtools index "$file"
+    else
+      echo "$file already indexed"
+    fi
 done
 
 # Run rMATS

@@ -23,7 +23,7 @@
 # Go to the directory from where the job was submitted (initial directory is $HOME)
 cd $PBS_O_WORKDIR
 # Load all required modules for the job
-module load gcc/7.2.0 intel/perflibs rmats-turbo/4.1.1
+module load gcc/7.2.0 intel/perflibs samtools/1.20 rmats-turbo/4.1.1
 
 ### Here follows the user commands:
 # Define number of processors

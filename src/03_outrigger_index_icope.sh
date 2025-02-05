@@ -10,16 +10,25 @@ mkdir -p outrigger
 
 # Check index
 
-echo "Indexing mapped reads with outrigger"
-for file in bam/*.bam; do
-  if [ ! -f bam/$(basename "$file").bal ]; then
-    outrigger index --bam $file --gtf $GTF
-  else
-    echo "$file already indexed"
-  fi
-done
+outrigger index --sj-out-tab mapped/*SJ.out.tab --gtf $GTF -o outrigger
 
-# Run rMATS
+# echo "Indexing mapped reads with outrigger"
+# for file in mapped/*_SJ.out.tab; do
+#   base_file=$(basename "$file")
+#   SAMPLE="${base_file%_Aligned.sortedByCoord.out.bam}"
+#   if [ ! -f outrigger/$(basename "$file").bal ]; then
+#     outrigger index --sj-out-tab $file --gtf $GTF -o outrigger/$SAMPLE
+#   else
+#     echo "$file already indexed"
+#   fi
+# done
+
+outrigger validate --genome hs \
+    -o ./outrigger/index\
+    --fasta ../homo_sapiens/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa
+
+
+# Run outrigger
 # for file in bam/*.bam; do
 #   base_file=$(basename "$file")
 #   SAMPLE="${base_file%_Aligned.sortedByCoord.out.bam}"

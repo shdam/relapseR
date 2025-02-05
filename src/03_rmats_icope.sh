@@ -12,13 +12,25 @@ mkdir -p $OUTPUT_DIR
 # Check index
 
 for file in "$BAM_DIR/*.bam"; do
-  if [ ! -f "$(basename "$forward").bai" ]; then
+  if [ ! -f "$(basename $file).bai" ]; then
     echo "Indexing mapped reads with samtools"
-    # samtools index "$file"
+    samtools index "$file"
   else
     echo "$file already indexed"
   fi
 done
 
 # Run rMATS
-rmats.py --b1 $BAM_DIR/*.bam --gtf $GTF --od $OUTPUT_DIR --nthread 40 --statoff
+for file in "$BAM_DIR/*.bam"; do
+
+  base_file="$(basename $file)"
+  tmp_file="${base_file%_Aligned.sortedByCoord.out.bam}"
+  if [ ! -f "$OUTPUT_DIR/tmp_file/SE.MATS.JC.txt" ]; then
+    echo "Running rMATS on $tmp_file"
+    echo "$OUTPUT_DIR/$tmp_file"
+    rmats.py --b1 $file --gtf $GTF --od "$OUTPUT_DIR/$tmp_file" --tmp "$OUTPUT_DIR/$tmp_file"_tmp --nthread 40 --statoff  --readLength 255 --variable-read-length
+  else
+    echo "$file already indexed"
+  fi
+done
+

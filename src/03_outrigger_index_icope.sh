@@ -1,12 +1,13 @@
 #!/bin/bash
 
+cd ../tools/outrigger
+source activate outrigger-env
 cd /home/projects/dp_immunoth/data/iCOPE
-mamba activate outrigger-env
 
 GTF="../homo_sapiens/Homo_sapiens.GRCh38.107.gtf"
 
 # Create output directory
-mkdir -p outrigger
+#mkdir -p outrigger
 
 # Check index
 

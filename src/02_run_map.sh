@@ -14,7 +14,7 @@
 ### Memory
 #PBS -l mem=120gb
 ### Requesting time - format is <days>:<hours>:<minutes>:<seconds> (here, 12 hours)
-#PBS -l walltime=10:00:00
+#PBS -l walltime=24:00:00
 ### Forward X11 connection (comment out if not needed)
 ##PBS -X
 # -- Job array specification --

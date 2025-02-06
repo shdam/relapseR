@@ -10,9 +10,9 @@
 ### Only send mail when job is aborted or terminates abnormally
 #PBS -m n
 ### Number of nodes
-#PBS -l nodes=1:ppn=1
+#PBS -l nodes=1:ppn=40
 ### Memory
-#PBS -l mem=20gb
+#PBS -l mem=100gb
 ### Requesting time - format is <days>:<hours>:<minutes>:<seconds> (here, 12 hours)
 #PBS -l walltime=10:00:00
 ### Forward X11 connection (comment out if not needed)

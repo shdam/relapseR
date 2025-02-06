@@ -8,7 +8,7 @@ mkdir -p cd19
 echo "Indexing mapped reads with samtools"
 for file in mapped/*.bam; do
   if [ ! -f mapped/$(basename "$file").bai ]; then
-    samtools index "$file" 
+    samtools index --threads 39 "$file" 
   else
     echo "$file already indexed"
   fi

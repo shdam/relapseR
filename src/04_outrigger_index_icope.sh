@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd /home/projects/dp_immunoth/data/iCOPE
-mamba activate outrigger-env
+#mamba activate outrigger-env
 
 GTF="../homo_sapiens/Homo_sapiens.GRCh38.107.gtf"
 

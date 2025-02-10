@@ -33,5 +33,5 @@ NPROCS=`wc -l < $PBS_NODEFILE`
 echo This job has allocated $NPROCS nodes
 
 
-/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/03_outrigger_index_icope.sh
+/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/04_outrigger_index_icope.sh
 

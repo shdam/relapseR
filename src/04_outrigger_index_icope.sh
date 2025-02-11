@@ -9,15 +9,16 @@ GTF="../homo_sapiens/Homo_sapiens.GRCh38.107.gtf"
 # outrigger index --bam cd19/*bam --gtf $GTF --resume
 
 echo "Indexing mapped reads with outrigger"
-for file in cd19/*bam; do
+for file in mapped/*SJ.out.tab; do
   base_file=$(basename "$file")
-  SAMPLE="${base_file%_Aligned.sortedByCoord.out.cd19.bam}"
+  SAMPLE="${base_file%_SJ.out.tab}"
   if [ ! -f outrigger/$SAMPLE/psi/outrigger_psi.csv ]; then
-    outrigger index --bam $file --gtf $GTF -o outrigger --resume --n-jobs 38
+    # outrigger index --bam $file --gtf $GTF -o outrigger --n-jobs 38 --resume
+    outrigger index -j $file --gtf $GTF -o outrigger --n-jobs 39 --resume
     outrigger psi -o outrigger
 
     mkdir -p outrigger/$SAMPLE
-    cp outrigger/junctions outrigger/$SAMPLE/
+    cp -r outrigger/junctions outrigger/$SAMPLE/
     rm outrigger/junctions/reads.csv
     mv outrigger/psi outrigger/$SAMPLE/
     # junction:16:28932089-28932910:+

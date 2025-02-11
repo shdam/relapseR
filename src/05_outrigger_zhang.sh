@@ -35,10 +35,10 @@ if ! [[ "$index" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
-cd /home/projects/dp_immunoth/data/iCOPE
+cd data/zhang
 #mamba activate outrigger-env
 
-GTF="../homo_sapiens/Homo_sapiens.GRCh38.107.gtf"
+GTF="/home/projects/dp_immunoth/data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf"
 
 
 # Get a list of all SJ.out.tab files
@@ -55,7 +55,7 @@ input_file=${files[$index]}
 
 # Extract the base file name and sample name
 base_file=$(basename "$input_file")
-SAMPLE="${base_file%_SJ.out.tab}"
+SAMPLE="${base_file%SJ.out.tab}"
 TMP_dir="tmp/$SAMPLE"
 
 
@@ -72,10 +72,12 @@ echo "Output directory: $output_dir"
 if [ ! -f $output_dir/psi/outrigger_psi.csv ]; then
     echo "Creating tmp dir: $TMP_dir"
     mkdir -p "$TMP_dir"
-    cp -r outrigger/index $TMP_dir/
+    cp -r /home/projects/dp_immunoth/data/iCOPE/outrigger/index $TMP_dir/
     mkdir -p $TMP_dir/junctions/
-    cp outrigger/junctions/metadata.csv $TMP_dir/junctions/
-
+    cp /home/projects/dp_immunoth/data/iCOPE/outrigger/junctions/metadata.csv $TMP_dir/junctions/
+    if [ -f $TMP_dir/junctions/reads.csv ]; then
+        rm $TMP_dir/junctions/reads.csv 
+    fi
     # outrigger index --bam $file --gtf $GTF -o outrigger --n-jobs 38 --resume
     outrigger index -j $input_file --gtf $GTF -o $TMP_dir --n-jobs 39 --resume
     outrigger psi -o $TMP_dir

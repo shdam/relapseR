@@ -18,7 +18,7 @@
 ### Forward X11 connection (comment out if not needed)
 ##PBS -X
 # -- Job array specification --
-#PBS -t 0-92%30
+#PBS -t 0-7%8
 
 # Go to the directory from where the job was submitted (initial directory is $HOME)
 cd $PBS_O_WORKDIR
@@ -36,6 +36,6 @@ NPROCS=`wc -l < $PBS_NODEFILE`
 echo This job has allocated $NPROCS nodes
 
 
-/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/04_outrigger_icope.sh -i $PBS_ARRAYID
+/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/05_outrigger_zhang.sh -i $PBS_ARRAYID
 
 

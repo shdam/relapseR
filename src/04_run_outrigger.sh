@@ -23,7 +23,7 @@
 # Go to the directory from where the job was submitted (initial directory is $HOME)
 cd $PBS_O_WORKDIR
 # Load all required modules for the job
-module load anaconda2/4.4.0 mamba-org/mamba/0.24.0 python/3.12.0
+module load anaconda2/4.4.0 mamba-org/mamba/0.24.0
 __conda_setup="$('/services/tools/mamba-org/mamba/0.24.0/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
 . "/services/tools/mamba-org/mamba/0.24.0/etc/profile.d/conda.sh"
 . "/services/tools/mamba-org/mamba/0.24.0/etc/profile.d/mamba.sh"

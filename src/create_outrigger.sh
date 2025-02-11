@@ -15,5 +15,5 @@ source activate outrigger-env
 git clone https://github.com/YeoLab/outrigger.git
 cd outrigger
 mamba env create --file environment.yml
-mamba activate outrigger-env
-mamba install outrigger
+#mamba activate outrigger-env
+#mamba install outrigger

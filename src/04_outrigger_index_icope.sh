@@ -10,7 +10,7 @@ mkdir -p outrigger
 
 # Check index
 
-outrigger index --bam cd19/*bam --gtf $GTF -o outrigger
+#outrigger index --bam cd19/*bam --gtf $GTF -o outrigger --resume
 
 # echo "Indexing mapped reads with outrigger"
 # for file in mapped/*_SJ.out.tab; do
@@ -24,7 +24,7 @@ outrigger index --bam cd19/*bam --gtf $GTF -o outrigger
 # done
 
 outrigger validate --genome hg19 \
-    -o ./outrigger/index\
+    -o ./outrigger\
     --fasta ../homo_sapiens/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa
 
 

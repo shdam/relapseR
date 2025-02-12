@@ -49,3 +49,53 @@ echo "#4EEE94
 python ggsashimi.py -b ../relapseR/raw_data/bam/bam_list.tsv -c 16:28931696-28933634 -o ../relapseR/figs/sashimi -g ../relapseR/raw_data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf -L 3 -P ../relapseR/raw_data/bam/colors.tsv -C 4 --base-size 22
 
 ```
+
+### PSI
+
+```{r psi}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+# Get a list of all files in the directory structure
+# all_files <- list.files(path = "../data/zhang/outrigger", recursive = TRUE, full.names = TRUE, pattern = ".*outrigger_summary.csv")
+all_files <- list.files(path = "~/mnt/cr2/people/s153398/relapseR/data/zhang/outrigger", recursive = TRUE, full.names = TRUE, pattern = ".*outrigger_summary.csv")
+
+# Read, filter, and combine all matching files into a single data frame
+exon2_data <- lapply(all_files, read_csv, show_col_types = FALSE, col_select = c(2:7), name_repair = "minimal") %>%
+  bind_rows()
+samples <- unique(exon2_data$sample_id)
+
+delta_exon2 <- exon2_data |> 
+  filter(grepl("16:28932089-28932910", event_id)) |> 
+  mutate(psi = tidyr::replace_na(psi, 1))
+  # select(sample_id, isoform1_junction13, psi)
+delta_exon2 <- delta_exon2 |> 
+  bind_rows(
+    data.frame(
+      sample_id = samples[!samples %in% delta_exon2$sample_id],
+      psi = 1,
+      isoform1_junction13 = 0
+    )
+  )
+
+
+# Plot the PSI distribution
+ggplot(delta_exon2, aes(x = psi)) +
+  geom_histogram(binwidth = 0.01, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "PSI of CD19exon2 - Zhang",
+       x = "PSI",
+       y = "Frequency") +
+  ggpubr::theme_pubr()
+
+# Plot Junction 1-3 distribution
+ggplot(delta_exon2, aes(x = isoform1_junction13)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Junction 1-3 counts - Zhang",
+       x = "Junction counts",
+       y = "Frequency") +
+  ggpubr::theme_pubr()
+```
+
+

@@ -18,7 +18,7 @@
 ### Forward X11 connection (comment out if not needed)
 ##PBS -X
 # -- Job array specification --
-#PBS -t 0-28%30
+#PBS -t 0-28%29
 ##PBS -t 0-92%30
 
 # Go to the directory from where the job was submitted (initial directory is $HOME)
@@ -39,6 +39,6 @@ INDICES=(6 9 13 18 20 21 25 28 31 37 38 42 43 47 48 49 51 52 54 55 56 57 65 67 7
 INDEX=${INDICES[$PBS_ARRAYID]}
 
 
-/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/04_outrigger_icope.sh -i $INDEX
+/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/04_outrigger_icope.sh -i $INDEX -f
 
 

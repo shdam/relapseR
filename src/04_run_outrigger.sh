@@ -18,7 +18,7 @@
 ### Forward X11 connection (comment out if not needed)
 ##PBS -X
 # -- Job array specification --
-#PBS -t 4  6  9 13 18 20 21 25 28 31 37 38 42 43 47 48 49 51 52 54 55 56 57 65 67 75 77 81 84 93%30
+#PBS -t 0-28%30
 ##PBS -t 0-92%30
 
 # Go to the directory from where the job was submitted (initial directory is $HOME)
@@ -35,8 +35,10 @@ mamba activate outrigger-env
 # Define number of processors
 NPROCS=`wc -l < $PBS_NODEFILE`
 echo This job has allocated $NPROCS nodes
+INDICES=(6 9 13 18 20 21 25 28 31 37 38 42 43 47 48 49 51 52 54 55 56 57 65 67 75 77 81 84 93)
+INDEX=${INDICES[$PBS_ARRAYID]}
 
 
-/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/04_outrigger_icope.sh -i $PBS_ARRAYID
+/usr/bin/time -v bash /home/projects/dp_immunoth/people/s153398/relapseR/src/04_outrigger_icope.sh -i $INDEX
 
 

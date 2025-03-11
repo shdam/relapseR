@@ -1,28 +1,32 @@
 #!/bin/bash
 
 # Function to display usage
+# Parse command-line arguments
 usage() {
-  echo "Usage: $0 -i <index>"
+  echo "Usage: \$0 -i <index> [-f]"
   exit 1
 }
 
 # Parse command-line arguments
-while getopts ":i:" opt; do
-  case ${opt} in
+while getopts ":i:f" opt; do
+  case \${opt} in
     i )
-      index=$OPTARG
+      index=\$OPTARG
+      ;;
+    f )
+      force_remove=true
       ;;
     \? )
-      echo "Invalid option: $OPTARG" 1>&2
+      echo "Invalid option: \$OPTARG" 1>&2
       usage
       ;;
     : )
-      echo "Invalid option: $OPTARG requires an argument" 1>&2
+      echo "Invalid option: \$OPTARG requires an argument" 1>&2
       usage
       ;;
   esac
 done
-shift $((OPTIND -1))
+shift \$((OPTIND -1))
 
 # Check if index is provided
 if [ -z "$index" ]; then
@@ -68,6 +72,11 @@ echo "Processing file: $input_file"
 echo "Sample: $SAMPLE"
 echo "Output directory: $output_dir"
 
+# Remove outrigger_psi.csv if -f flag is set
+if [ "$force_remove" = true ] && [ -f "$output_dir/psi/outrigger_psi.csv" ]; then
+  echo "Removing existing outrigger_psi.csv file."
+  rm "$output_dir/psi/outrigger_psi.csv"
+fi
 
 if [ ! -f $output_dir/psi/outrigger_psi.csv ]; then
     echo "Creating tmp dir: $TMP_dir"

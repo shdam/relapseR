@@ -18,7 +18,8 @@
 ### Forward X11 connection (comment out if not needed)
 ##PBS -X
 # -- Job array specification --
-#PBS -t 0-92%30
+#PBS -t 4  6  9 13 18 20 21 25 28 31 37 38 42 43 47 48 49 51 52 54 55 56 57 65 67 75 77 81 84 93%30
+##PBS -t 0-92%30
 
 # Go to the directory from where the job was submitted (initial directory is $HOME)
 cd $PBS_O_WORKDIR

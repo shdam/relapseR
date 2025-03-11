@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Create a BAM list for the Sashimi plot
 
-```{sh}
+```{sh, eval=FALSE}
 echo "Creating BAM list"
 echo "ID  File  Patient Color
 CRR025973	/home/projects/shd/relapseR/raw_data/bam/CRR025973Aligned.sortedByCoord.out.bam	Patient_A	1
@@ -32,7 +32,7 @@ CRR025976	/home/projects/shd/relapseR/raw_data/bam/CRR025976Aligned.sortedByCoor
 
 ## Sashimi plot
 
-```{sh}
+```{sh, eval=FALSE}
 echo "Creating sashimi plot"
 cd /home/projects/shd/tools/
 mkdir -p figs

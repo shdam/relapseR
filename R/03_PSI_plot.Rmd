@@ -43,7 +43,15 @@ psi_tcga <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
 
 ```{r}
 message("Acquiring TCGA metadata")
-md <- snapcount:::get_compilation_metadata(compilation = "tcga")
+
+if (!exists("../data/md_tcga.Rdata")) {
+  md_tcga <- snapcount:::get_compilation_metadata(compilation = "tcga")
+  save(md_tcga, file = "../data/md_tcga.Rdata")
+} else {
+  load("../data/md_tcga.Rdata")
+}
+md <- md_tcga
+
 metadata <- tibble::tibble(sample_id = md$rail_id, 
                            Cancer = md$gdc_cases.tissue_source_site.project,
                            project = md$gdc_cases.project.project_id,
@@ -156,8 +164,14 @@ ggsave(psi_plot, filename = "../figs/PSI_TCGA-DLPFC.png", width = 10, height = 4
 
 ## SRA
 
-md_sra <- snapcount:::get_compilation_metadata(compilation = "srav3h") |> 
-  dplyr::filter(library_layout == "paired")
+if (!exists("../data/md_sra.Rdata")) {
+  md_sra <- snapcount:::get_compilation_metadata(compilation = "srav3h") |> 
+    dplyr::filter(library_layout == "paired")
+  save(md_sra, file = "../data/md_sra.Rdata")
+} else {
+  load("../data/md_sra.Rdata")
+}
+
 
 md_sra |> dplyr::filter(stringr::str_detect(study_title, "B-ALL")) |> dim()
 md_sra |> dplyr::filter(stringr::str_detect(study_title, "DLBCL")) |> dim()
@@ -176,10 +190,11 @@ ex <- QueryBuilder(compilation="srav3h", regions="chr16:28932089-28932910") %>%
   set_row_filters(strand == "+") %>% 
   set_coordinate_modifier(Coordinates$Exact)
 
-psi_sra <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
+psi_sra <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=10)
 
 md_sra_ball <- md_sra |> 
-  dplyr::filter(stringr::str_detect(study_title, "B-ALL"))
+  dplyr::filter(stringr::str_detect(study_title, "B-ALL"),
+                stringr::str_detect(sample_attributes, "leukemia"))
 psi_sra_ball <- psi_sra %>% 
   dplyr::filter(psi != -1) %>% 
   semi_join(md_sra_ball, by=c("sample_id" = "rail_id")) %>% 
@@ -193,7 +208,9 @@ psi_sra_aml <- psi_sra %>%
   mutate(type = "SRA AML")
 
 md_sra_dlbcl <- md_sra |> 
-  dplyr::filter(stringr::str_detect(study_title, "DLBCL"))
+  dplyr::filter(stringr::str_detect(study_title, "DLBCL"),
+                stringr::str_detect(sample_attributes, "DLBCL") | 
+                  stringr::str_detect(sample_attributes, "lymphoma"))
 psi_sra_dlbcl <- psi_sra %>% 
   dplyr::filter(psi != -1) %>%
   semi_join(md_sra_dlbcl, by=c("sample_id" = "rail_id")) %>% 
@@ -201,32 +218,114 @@ psi_sra_dlbcl <- psi_sra %>%
 
 ```
 
+
+```{r}
+# iCOPE
+
+psi_icope <- readRDS("../data/psi_icope.RDS")
+
+psi_icope <- psi_icope |> 
+  mutate(type = "iCOPE B-ALL") |> 
+  rename(exclusion_group_coverage = isoform1_junction13,
+         inclusion_group1_coverage = isoform2_junction12,
+         inclusion_group2_coverage = isoform2_junction23) |> 
+  select(-event_id)
+
+
+```
+
 ### PSI
 
 ```{r}
 message("Creating PSI plot")
-colors <- c("hotpink3", "darkblue", "slategray", "red", "darkgreen", "lightblue")
-psi_plot <- psi_DLPFC %>%
-  bind_rows(psi_gtex_blood) %>%
-  bind_rows(psi_gtex_spleen) %>%
-  bind_rows(psi_sra_ball) %>%
-  bind_rows(psi_sra_aml) %>%
-  bind_rows(psi_sra_dlbcl) %>%
+colors <- c("hotpink3", "darkblue", "darkred", "darkgreen", "lightblue")
+psi_plot <- psi_icope %>%
+  rbind(psi_gtex_blood) %>%
+  rbind(psi_gtex_spleen) %>%
+  # bind_rows(psi_DLPFC) %>%
+  # bind_rows(psi_sra_aml) %>%
+  # bind_rows(psi_sra_ball) %>%
+  rbind(psi_sra_dlbcl) %>%
+  mutate(type = factor(type, levels = c("iCOPE B-ALL", "SRA DLBCL", "GTEx Blood", "GTEx Spleen"))) |> 
   ggplot() +
   aes(x = psi, fill = type, color = type) +
+  # aes(x = psi, y = type, fill = type, color = type) +
   # geom_density_ridges(alpha = 0.4, quantile_lines = TRUE, quantiles = 2) +
-  geom_histogram(binwidth = 0.05, alpha = 0.7) +
-  facet_wrap(~ type, scales = "free", ncol = 3) +
+  geom_histogram(binwidth = 0.01, alpha = 0.7) +
+  facet_wrap(~ type, scales = "free", ncol = 2) +
   theme_classic(base_size = 18) +
   scale_fill_manual(values = colors) +
   scale_color_manual(values = colors) +
   labs(color = "Tissue",
        fill = "Tissue",
-       x = "Fraction of CD19 transcripts containing Exon2.",
+       x = "Fraction of CD19 transcripts containing Exon2",
        y = "") +
   theme(legend.position="none") +
   xlim(0.6, 1.05)
 psi_plot
-ggsave(psi_plot, filename = "../figs/PSI_SRA.png", width = 10, height = 4)
+ggsave(psi_plot, filename = "../figs/PSI_SRA_hist.pdf", width = 10, height = 5)
+
+```
+
+
+
+### Age vs PSI
+
+```{r}
+psi_DLPFC |> 
+  filter(psi != -1) |> 
+  mutate(counts = ((inclusion_group1_coverage+inclusion_group2_coverage)/2)) |> 
+ggplot() +
+  aes(x = exclusion_group_coverage, y = psi, size = counts) +
+  geom_point(color = "slategray") +
+  ggpubr::theme_pubr(base_size = 16)
+
+
+```
+
+```{r}
+# Sample data
+# psi_low <- dplyr::filter(psi_DLPFC, psi < 0.95)
+# psi_high <- dplyr::filter(psi_DLPFC, psi >= 0.95)
+# group <- c(rep("Low", 50), rep("High", 50))
+
+# ages <- c(rnorm(50, mean = 30, sd = 5), rnorm(50, mean = 35, sd = 6))
+
+# psi_sra |> 
+#   filter(psi != -1) |> 
+#   mutate(counts = ((inclusion_group1_coverage+inclusion_group2_coverage)/2)) |> 
+# ggplot() +
+#   aes(x = exclusion_group_coverage, y = psi, size = counts) +
+#   geom_point(fill = "slategray") +
+#   ggpubr::theme_pubr(base_size = 16)
+
+
+# Boxplot
+psi_sra_ball |> 
+  filter(psi != -1) |> 
+  mutate(counts = ((inclusion_group1_coverage+inclusion_group2_coverage)/2)) |> 
+ggplot() +
+  aes(x = exclusion_group_coverage, y = psi, size = counts) +
+  geom_point(color = "slategray") +
+  ggpubr::theme_pubr(base_size = 16)
+
+```
+
+```{r}
+psi_sra_dlbcl |> 
+  filter(psi != -1) |> 
+  mutate(counts = ((inclusion_group1_coverage+inclusion_group2_coverage)/2)) |> 
+ggplot() +
+  aes(x = exclusion_group_coverage, y = psi, size = counts) +
+  geom_point(color = "slategray") +
+  ggpubr::theme_pubr(base_size = 16)
+```
+
+
+```{r}
+cd19 <- QueryBuilder(compilation="srav3h", regions="chr16:28931971-28939342") %>% 
+  set_row_filters(strand == "+")
+results <- snapcount::query_jx(cd19)
+read_counts <- assay(results, "counts")
 
 ```

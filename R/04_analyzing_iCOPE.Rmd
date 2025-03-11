@@ -89,22 +89,38 @@ delta_exon2 <- delta_exon2 |>
       isoform1_junction13 = 0
     )
   )
-
+saveRDS(delta_exon2, file = "../data/psi_icope.RDS")
 
 # Plot the PSI distribution
 ggplot(delta_exon2, aes(x = psi)) +
-  geom_histogram(binwidth = 0.01, fill = "blue", color = "black", alpha = 0.7) +
+  geom_histogram(binwidth = 0.01, fill = "slategray", color = "black", alpha = 0.7) +
+  xlim(c(0.6, 1.05)) +
   labs(title = "PSI of CD19exon2 - iCOPE",
        x = "PSI",
-       y = "Frequency") +
-  ggpubr::theme_pubr()
+       y = "Counts") +
+  ggpubr::theme_pubr(base_size = 16)
 
 # Plot Junction 1-3 distribution
 ggplot(delta_exon2, aes(x = isoform1_junction13)) +
-  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  geom_histogram(binwidth = 1, fill = "slategray", color = "black", alpha = 0.7) +
   labs(title = "Junction 1-3 counts - iCOPE",
        x = "Junction counts",
-       y = "Frequency") +
-  ggpubr::theme_pubr()
+       y = "Counts") +
+  ggpubr::theme_pubr(base_size = 16)
+
+```
+
+
+```{r}
+
+delta_exon2 |> 
+  mutate(counts = ((isoform2_junction12+isoform2_junction23)/2),
+         # counts = scale(counts)
+         ) |> 
+  # select(psi, counts) |> 
+  ggplot() +
+  aes(x = isoform1_junction13, y = psi, size = counts) +
+  geom_point(fill = "slategray") +
+  ggpubr::theme_pubr(base_size = 16)
 
 ```

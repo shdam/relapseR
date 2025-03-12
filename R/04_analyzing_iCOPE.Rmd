@@ -124,3 +124,36 @@ delta_exon2 |>
   ggpubr::theme_pubr(base_size = 16)
 
 ```
+
+
+```{r}
+cd19_counts <- read_csv("~/mnt/cr2/data/iCOPE/cd19_counts.csv")
+delta_exon2 |> 
+  mutate(sample_id = stringr::str_remove(sample_id, "_$")) |> 
+  left_join(cd19_counts, by = c("sample_id" = "Sample")) |> 
+  # mutate(CD19Count = CD19Count/10^6) |>
+  mutate(inclusionCount = ((isoform2_junction12+isoform2_junction23)/2),
+         # counts = scale(counts)
+         ) |>
+  # select(psi, counts) |> 
+  ggplot() +
+  aes(size = isoform1_junction13, y = psi, x = inclusionCount) +
+  geom_point(fill = "slategray") +
+  ggpubr::theme_pubr(base_size = 16)
+
+
+delta_exon2 |> 
+  mutate(sample_id = stringr::str_remove(sample_id, "_$")) |> 
+  left_join(cd19_counts, by = c("sample_id" = "Sample")) |> 
+  mutate(CD19Count = CD19Count/10^6) |>
+  mutate(inclusionCount = ((isoform2_junction12+isoform2_junction23)/2),
+         # counts = scale(counts)
+         ) |>
+  # select(psi, counts) |> 
+  ggplot() +
+  aes(x = CD19Count, y = psi, size = isoform1_junction13) +
+  geom_point(fill = "slategray") +
+  ggpubr::theme_pubr(base_size = 16)
+
+
+```

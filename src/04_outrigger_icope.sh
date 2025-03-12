@@ -62,7 +62,8 @@ echo "Output directory: $output_dir"
 # If force flag is set, remove existing outrigger_psi.csv
 if [ "$force" = true ] && [ -f $output_dir/psi/outrigger_psi.csv ]; then
     echo "Force flag set. Removing existing outrigger_psi.csv"
-    rm -f $output_dir/psi/outrigger_psi.csv
+    rm -rf $output_dir/psi
+    rm -rf $output_dir/junctions
 fi
 if [ ! -f $output_dir/psi/outrigger_psi.csv ]; then
     echo "Creating tmp dir: $TMP_dir"

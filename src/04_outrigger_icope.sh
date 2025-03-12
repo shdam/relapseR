@@ -74,8 +74,8 @@ if [ ! -f $output_dir/psi/outrigger_psi.csv ]; then
     # outrigger index --bam $file --gtf $GTF -o outrigger --n-jobs 38 --resume
     outrigger index -j $input_file --gtf $GTF -o $TMP_dir --n-jobs 39 --resume
     outrigger psi -o $TMP_dir
-    mv $TMP_dir/junctions $output_dir/
-    mv $TMP_dir/psi $output_dir/
+    mv -f $TMP_dir/junctions $output_dir/
+    mv -f $TMP_dir/psi $output_dir/
     rm -r $TMP_dir
     # junction:16:28932089-28932910:+
   else

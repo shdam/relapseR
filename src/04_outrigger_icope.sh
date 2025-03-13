@@ -3,7 +3,7 @@
 usage() {
   echo "Usage: $0 -i <index> [-f]"
   echo "  -i <index>  Specify file index"
-  echo "  -f          Force overwrite (removes existing outrigger_psi.csv if present)"
+  echo "  -f          Force overwrite (removes existing outrigger results if present)"
   exit 1
 }
 # Parse command-line arguments
@@ -61,7 +61,7 @@ echo "Sample: $SAMPLE"
 echo "Output directory: $output_dir"
 # If force flag is set, remove existing outrigger_psi.csv
 if [ "$force" = true ]; then
-    echo "Force flag set. Removing existing outrigger_psi.csv"
+    echo "Force flag set. Removing existing outrigger results"
     rm -rf $output_dir/psi
     rm -rf $output_dir/junctions
 fi

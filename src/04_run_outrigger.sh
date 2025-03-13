@@ -35,7 +35,7 @@ mamba activate outrigger-env
 # Define number of processors
 NPROCS=`wc -l < $PBS_NODEFILE`
 echo This job has allocated $NPROCS nodes
-INDICES=(4 6 9 13 18 20 21 25 28 31 37 38 42 43 47 48 49 51 52 54 55 56 57 65 67 75 77 81 84 93)
+INDICES=(3 5 8 12 17 19 20 24 27 30 36 37 41 42 46 47 48 50 51 53 54 55 56 64 66 74 76 80 83 92)
 INDEX=${INDICES[$PBS_ARRAYID]}
 
 

@@ -60,7 +60,7 @@ echo "Processing file: $input_file"
 echo "Sample: $SAMPLE"
 echo "Output directory: $output_dir"
 # If force flag is set, remove existing outrigger_psi.csv
-if [ "$force" = true ] && [ -f $output_dir/psi/outrigger_psi.csv ]; then
+if [ "$force" = true ]; then
     echo "Force flag set. Removing existing outrigger_psi.csv"
     rm -rf $output_dir/psi
     rm -rf $output_dir/junctions

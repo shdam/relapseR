@@ -48,9 +48,35 @@ echo "#4EEE94
 
 python ggsashimi.py -b ../relapseR/raw_data/bam/bam_list.tsv -c 16:28931696-28933634 -o ../relapseR/figs/sashimi -g ../relapseR/raw_data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf -L 3 -P ../relapseR/raw_data/bam/colors.tsv -C 4 --base-size 22
 
+
 ```
 
-### PSI
+
+```{sh, eval=FALSE}
+echo "ID\tFile\tPatient\tColor
+19603_000001\t/home/projects/dp_immunoth/data/iCOPE/mapped/19603_000001.T.T02.S2_Aligned.sortedByCoord.out.bam\t19603_000001\t#4EEE94
+20015_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/20015_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t20015_000000\t#4EEE94
+21057_000001\t/home/projects/dp_immunoth/data/iCOPE/mapped/21057_000001.T.T02.S2_Aligned.sortedByCoord.out.bam\t21057_000001\t#4EEE94
+21191_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/21191_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t21191_000000\t#4EEE94
+21762_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/21762_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t21762_000000\t#4EEE94
+21852_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/21852_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t21852_000000\t#4EEE94
+22360_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/22360_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t22360_000000\t#4EEE94
+23322_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/23322_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t23322_000000\t#4EEE94
+23334_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/23334_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t23334_000000\t#4EEE94
+23944_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/23944_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t23944_000000\t#4EEE94
+24166_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/24166_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t24166_000000\t#4EEE94
+24756_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/24756_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t24756_000000\t#4EEE94
+27098_165905\t/home/projects/dp_immunoth/data/iCOPE/mapped/27098_165905.T.T02.S2_Aligned.sortedByCoord.out.bam\t27098_165905\t#4EEE94
+27152_166111\t/home/projects/dp_immunoth/data/iCOPE/mapped/27152_166111.T.T02.S2_Aligned.sortedByCoord.out.bam\t27152_166111\t#4EEE94
+27826_168775\t/home/projects/dp_immunoth/data/iCOPE/mapped/27826_168775.T.T02.S2_Aligned.sortedByCoord.out.bam\t27826_168775\t#4EEE94
+7932_000000\t/home/projects/dp_immunoth/data/iCOPE/mapped/7932_000000.T.T02.S2_Aligned.sortedByCoord.out.bam\t7932_000000\t#4EEE94" > ../relapseR/data/icope_bam_list.tsv
+
+python ggsashimi.py -b ../relapseR/data/icope_bam_list.tsv -c 16:28931696-28933634 -o ../relapseR/figs/sashimi_icope_noCD19 -g /home/projects/dp_immunoth/data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf -L 3 -C 4 --base-size 22 --width 22
+# Local
+python3 ggsashimi.py -b ../../../data/iCOPE/mapped/7932_000000.T.T02.S2_Aligned.sortedByCoord.out.bam -c 16:28931696-28933634 -o ../relapseR/figs/sashimi_7932 -g ../../../data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf -L 3 -C 4 --base-size 22 --width 22
+```
+
+21191_000000	../../../data/iCOPE/mapped/21191_000000.T.T02.S2_Aligned.sortedByCoord.out.bam	21191_000000### PSI
 
 ```{r psi}
 # Load necessary libraries
@@ -80,6 +106,13 @@ delta_exon2 <- delta_exon2 |>
     )
   )
 
+delta_exon2 |> 
+  dplyr::filter(sample_id |> stringr::str_detect("CRR02597[3|1|7|5]")) |> 
+  mutate(patient = factor(c("B", "A", "C", "D"), levels = c("A", "B", "C", "D"))) |> 
+  select(sample_id, patient, isoform1_junction13) |> 
+  ggplot() +
+  aes(y = patient, x = isoform1_junction13) +
+  geom_col()
 
 # Plot the PSI distribution
 ggplot(delta_exon2, aes(x = psi)) +

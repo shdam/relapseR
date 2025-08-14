@@ -13,6 +13,7 @@ library("magrittr")
 library("dplyr")
 library("ggplot2")
 library("ggridges")
+library("ggpubr")
 ```
 
 
@@ -24,19 +25,19 @@ message("Computing TCGA PSI")
 
 ## TCGA
 # left inclusion query
-lq <- QueryBuilder(compilation="tcga", regions="chr16:28932089-28932345") %>% 
+lq <- QueryBuilder(compilation="tcgav2", regions="chr16:28932089-28932345") %>% 
   set_row_filters(strand == "+") %>% 
   set_coordinate_modifier(Coordinates$Exact)
 # right inclusion query
-rq <- QueryBuilder(compilation="tcga", regions="chr16:28932613-28932910") %>% 
+rq <- QueryBuilder(compilation="tcgav2", regions="chr16:28932613-28932910") %>% 
   set_row_filters(strand == "+") %>% 
   set_coordinate_modifier(Coordinates$Exact)
 # exclusion query
-ex <- QueryBuilder(compilation="tcga", regions="chr16:28932089-28932910") %>% 
+ex <- QueryBuilder(compilation="tcgav2", regions="chr16:28932089-28932910") %>% 
   set_row_filters(strand == "+") %>% 
   set_coordinate_modifier(Coordinates$Exact)
 
-psi_tcga <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
+psi_tcga <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=10)
 ```
 
 ### Metadata
@@ -44,8 +45,8 @@ psi_tcga <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
 ```{r}
 message("Acquiring TCGA metadata")
 
-if (!exists("../data/md_tcga.Rdata")) {
-  md_tcga <- snapcount:::get_compilation_metadata(compilation = "tcga")
+if (!file.exists("../data/md_tcga.Rdata")) {
+  md_tcga <- snapcount:::get_compilation_metadata(compilation = "tcgav2")
   save(md_tcga, file = "../data/md_tcga.Rdata")
 } else {
   load("../data/md_tcga.Rdata")
@@ -67,15 +68,15 @@ metadata <- tibble::tibble(sample_id = md$rail_id,
     ) 
 ```
 
-### Subset to TCGA-DLPFC
+### Subset to TCGA-DLBCL
 
 ```{r}
-# PSI of TCGA-DLPFC
-psi_DLPFC <- psi_tcga %>% 
-  dplyr::filter(psi != -1) %>% 
+# PSI of TCGA-DLBCL
+psi_DLBCL <- psi_tcga %>% 
+  dplyr::filter(psi != -1) %>%
   semi_join(metadata, by = "sample_id") %>% 
   left_join(metadata, by = "sample_id") %>% 
-  mutate(type = "TCGA DLBCL")
+  mutate(type = "DLBCL")
 
 ```
 
@@ -83,8 +84,8 @@ psi_DLPFC <- psi_tcga %>%
 
 ```{r}
 # Sample data
-psi_low <- dplyr::filter(psi_DLPFC, psi < 0.95)
-psi_high <- dplyr::filter(psi_DLPFC, psi >= 0.95)
+psi_low <- dplyr::filter(psi_DLBCL, psi < 0.95)
+psi_high <- dplyr::filter(psi_DLBCL, psi >= 0.95)
 group <- c(rep("Low", 50), rep("High", 50))
 
 ages <- c(rnorm(50, mean = 30, sd = 5), rnorm(50, mean = 35, sd = 6))
@@ -115,6 +116,7 @@ ex_gtex <- QueryBuilder(compilation="gtexv2", regions="chr16:28932089-28932910")
 
 psi_gtex <- percent_spliced_in(list(lq_gtex), list(rq_gtex), list(ex_gtex), min_count=20)
 
+md_gtex <- snapcount:::get_compilation_metadata(compilation = "gtexv2")
 
 ## Tissue specific PSIs
 ts <- tissue_specificity(list(lq_gtex, rq_gtex, ex_gtex))
@@ -123,13 +125,18 @@ bm_sample <- ts %>% filter(tissue == "Bone Marrow")
 spleen_sample <- ts %>% filter(tissue == "Spleen")
 
 
+
 psi_gtex_blood <- psi_gtex %>% filter(psi != -1) %>% 
   semi_join(blood_sample, by="sample_id") %>% 
-  mutate(type = "GTEx Blood")
+  mutate(type = "Blood")
+md_blood <- md_gtex |> 
+  semi_join(psi_gtex_blood, by=c("rail_id"="sample_id"))
 
 psi_gtex_spleen <- psi_gtex %>% filter(psi != -1) %>% 
   semi_join(spleen_sample, by="sample_id") %>% 
-  mutate(type = "GTEx Spleen")
+  mutate(type = "Spleen")
+md_spleen <- md_gtex |> 
+  semi_join(psi_gtex_spleen, by=c("rail_id"="sample_id"))
 ```
 
 
@@ -139,7 +146,7 @@ psi_gtex_spleen <- psi_gtex %>% filter(psi != -1) %>%
 ```{r}
 message("Creating PSI plot")
 colors <- c("hotpink3", "darkblue", "slategray")
-psi_plot <- psi_DLPFC %>%
+psi_plot <- psi_DLBCL %>%
   bind_rows(psi_gtex_blood) %>%
   bind_rows(psi_gtex_spleen) %>%
   ggplot() +
@@ -164,7 +171,7 @@ ggsave(psi_plot, filename = "../figs/PSI_TCGA-DLPFC.png", width = 10, height = 4
 
 ## SRA
 
-if (!exists("../data/md_sra.Rdata")) {
+if (!file.exists("../data/md_sra.Rdata")) {
   md_sra <- snapcount:::get_compilation_metadata(compilation = "srav3h") |> 
     dplyr::filter(library_layout == "paired")
   save(md_sra, file = "../data/md_sra.Rdata")
@@ -173,9 +180,11 @@ if (!exists("../data/md_sra.Rdata")) {
 }
 
 
-md_sra |> dplyr::filter(stringr::str_detect(study_title, "B-ALL")) |> dim()
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "ALL"), stringr::str_detect(sample_attributes, "leukemia"), stringr::str_detect(negate = T,sample_attributes, "T-")) |> dim()
 md_sra |> dplyr::filter(stringr::str_detect(study_title, "DLBCL")) |> dim()
 md_sra |> dplyr::filter(stringr::str_detect(study_title, "lymph node")) |> dim()
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "CLL")) |> dim()
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "myeloma")) |> dim()
 
 
 lq <- QueryBuilder(compilation="srav3h", regions="chr16:28932089-28932345") %>% 
@@ -193,31 +202,49 @@ ex <- QueryBuilder(compilation="srav3h", regions="chr16:28932089-28932910") %>%
 psi_sra <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=10)
 
 md_sra_ball <- md_sra |> 
-  dplyr::filter(stringr::str_detect(study_title, "B-ALL"),
-                stringr::str_detect(sample_attributes, "leukemia"))
+  dplyr::filter(stringr::str_detect(study_title, "ALL"), stringr::str_detect(sample_attributes, "leukemia"), stringr::str_detect(negate = T,sample_attributes, "T-"))
 psi_sra_ball <- psi_sra %>% 
   dplyr::filter(psi != -1) %>% 
   semi_join(md_sra_ball, by=c("sample_id" = "rail_id")) %>% 
-  mutate(type = "SRA B-ALL")
+  mutate(type = "B-ALL")
 
-md_sra_aml <- md_sra |> 
-  dplyr::filter(stringr::str_detect(study_title, "AML"))
-psi_sra_aml <- psi_sra %>% 
+md_sra_cll <- md_sra |> 
+  dplyr::filter(stringr::str_detect(study_title, "CLL"),
+                study == "SRP095405"
+                )
+psi_sra_cll <- psi_sra %>% 
+  dplyr::filter(psi != -1) %>% 
+  semi_join(md_sra_cll, by=c("sample_id" = "rail_id")) %>% 
+  mutate(type = "CLL")
+md_sra_cll <- md_sra_cll |> 
+  semi_join(psi_sra_cll, by=c("rail_id" = "sample_id"))
+
+md_sra_mm <- md_sra |> 
+  dplyr::filter(stringr::str_detect(study_title, "myeloma"))
+psi_sra_mm <- psi_sra %>% 
   dplyr::filter(psi != -1) %>%
-  semi_join(md_sra_aml, by=c("sample_id" = "rail_id")) %>% 
-  mutate(type = "SRA AML")
+  semi_join(md_sra_mm, by=c("sample_id" = "rail_id")) %>% 
+  mutate(type = "MM")
+md_sra_mm <- md_sra_mm |> 
+  semi_join(psi_sra_mm, by=c("rail_id" = "sample_id"))
 
-md_sra_dlbcl <- md_sra |> 
+md_sra_dlbcl <- md_sra |>
   dplyr::filter(stringr::str_detect(study_title, "DLBCL"),
-                stringr::str_detect(sample_attributes, "DLBCL") | 
-                  stringr::str_detect(sample_attributes, "lymphoma"))
+                # study == "SRP092397",
+                # study == "SRP148423",
+                study == "SRP183071",
+                stringr::str_detect(sample_attributes, "DLBCL") |
+                  stringr::str_detect(sample_attributes, "lymphoma"),
+                # stringr::str_detect(sample_attributes, "control") | stringr::str_detect(sample_attributes, "DMSO")
+                )
 psi_sra_dlbcl <- psi_sra %>% 
   dplyr::filter(psi != -1) %>%
   semi_join(md_sra_dlbcl, by=c("sample_id" = "rail_id")) %>% 
-  mutate(type = "SRA DLBCL")
+  mutate(type = "DLBCL")
 
 ```
 
+# iCOPE
 
 ```{r}
 # iCOPE
@@ -225,7 +252,7 @@ psi_sra_dlbcl <- psi_sra %>%
 psi_icope <- readRDS("../data/psi_icope.RDS")
 
 psi_icope <- psi_icope |> 
-  mutate(type = "iCOPE B-ALL") |> 
+  mutate(type = "B-ALL") |> 
   rename(exclusion_group_coverage = isoform1_junction13,
          inclusion_group1_coverage = isoform2_junction12,
          inclusion_group2_coverage = isoform2_junction23) |> 
@@ -234,45 +261,49 @@ psi_icope <- psi_icope |>
 
 ```
 
-### PSI
+### Figure 3 - PSI
 
 ```{r}
 message("Creating PSI plot")
-colors <- c("hotpink3", "darkblue", "darkred", "darkgreen", "lightblue")
+colors <- c("hotpink3", "darkblue", "darkorange", "darkred", "darkgreen")
 psi_plot <- psi_icope %>%
   rbind(psi_gtex_blood) %>%
   rbind(psi_gtex_spleen) %>%
-  # bind_rows(psi_DLPFC) %>%
-  # bind_rows(psi_sra_aml) %>%
-  # bind_rows(psi_sra_ball) %>%
+  # rbind(psi_DLBCL |>  select(all_of(colnames(psi_icope)), type)) %>%
+  # rbind(psi_sra_mm) %>%
+  rbind(psi_sra_cll) %>%
   rbind(psi_sra_dlbcl) %>%
-  mutate(type = factor(type, levels = c("iCOPE B-ALL", "SRA DLBCL", "GTEx Blood", "GTEx Spleen"))) |> 
+  mutate(type = factor(type, levels = c("B-ALL", "DLBCL", "CLL", "MM", "Blood", "Spleen"))) |>  #, "CLL"
   ggplot() +
-  aes(x = psi, fill = type, color = type) +
+  aes(x = psi*100, fill = type, color = type) +
   # aes(x = psi, y = type, fill = type, color = type) +
   # geom_density_ridges(alpha = 0.4, quantile_lines = TRUE, quantiles = 2) +
-  geom_histogram(binwidth = 0.01, alpha = 0.7) +
-  facet_wrap(~ type, scales = "free", ncol = 2) +
+  geom_histogram(binwidth = 1, alpha = 0.7) +
+  scale_y_continuous(n.breaks = 4) +
+  # coord_cartesian(ylim = c(0, 50)) +
+  facet_wrap(~ type, scales = "free", ncol = 3) +
   theme_classic(base_size = 18) +
   scale_fill_manual(values = colors) +
   scale_color_manual(values = colors) +
   labs(color = "Tissue",
        fill = "Tissue",
-       x = "Fraction of CD19 transcripts containing Exon2",
-       y = "") +
+       # x = "Fraction of CD19 transcripts containing Exon2",
+       x = "Percent of CD19 transcripts that contain exon2 (%)",
+       y = "# of samples") +
   theme(legend.position="none") +
-  xlim(0.6, 1.05)
+  xlim(60, 105) 
+  # ggpubr::theme_pubr()
 psi_plot
-ggsave(psi_plot, filename = "../figs/PSI_SRA_hist.pdf", width = 10, height = 5)
-
+ggsave(psi_plot, filename = "../figs/PSI_hist_full.pdf", width = 10, height = 10)
+# ggsave(psi_plot, filename = "../figs/PSI_SRA_full.png", width = 10, height = 10)
 ```
 
 
 
-### Age vs PSI
+### RNA counts vs PSI
 
 ```{r}
-psi_DLPFC |> 
+psi_DLBCL |> 
   filter(psi != -1) |> 
   mutate(counts = ((inclusion_group1_coverage+inclusion_group2_coverage)/2)) |> 
 ggplot() +
@@ -285,8 +316,8 @@ ggplot() +
 
 ```{r}
 # Sample data
-# psi_low <- dplyr::filter(psi_DLPFC, psi < 0.95)
-# psi_high <- dplyr::filter(psi_DLPFC, psi >= 0.95)
+# psi_low <- dplyr::filter(psi_DLBCL, psi < 0.95)
+# psi_high <- dplyr::filter(psi_DLBCL, psi >= 0.95)
 # group <- c(rep("Low", 50), rep("High", 50))
 
 # ages <- c(rnorm(50, mean = 30, sd = 5), rnorm(50, mean = 35, sd = 6))
@@ -314,7 +345,7 @@ ggplot() +
 ```{r}
 psi_sra_dlbcl |> 
   filter(psi != -1) |> 
-  mutate(counts = ((inclusion_group1_coverage+inclusion_group2_coverage)/2)) |> 
+  mutate(counts = ((inclusion_group1_coverage+inclusion_group2_coverage+exclusion_group_coverage)/3)) |> 
 ggplot() +
   aes(x = exclusion_group_coverage, y = psi, size = counts) +
   geom_point(color = "slategray") +
@@ -322,10 +353,43 @@ ggplot() +
 ```
 
 
+## Boxplots
+
 ```{r}
-cd19 <- QueryBuilder(compilation="srav3h", regions="chr16:28931971-28939342") %>% 
-  set_row_filters(strand == "+")
-results <- snapcount::query_jx(cd19)
-read_counts <- assay(results, "counts")
+
+md_sra_dlbcl <- md_sra_dlbcl |> 
+  mutate(sample_attributes = case_when(
+    stringr::str_starts(sample_attributes, "cell of origin") ~ sample_attributes,
+    TRUE ~ paste0("cell of origin;;UNCLASSIFIED|", sample_attributes))) |> 
+  tidyr::separate_wider_delim(sample_attributes, names = c("cell of origin", "chemotherapy cycles", "ipi", "region", "source_name", "treatment"), delim = "|") |> 
+  mutate(across(all_of(c("cell of origin", "chemotherapy cycles", "ipi", "region", "source_name", "treatment")), .fns = ~stringr::str_remove_all(.x, "^.*;;")))
+
+psi_sra_dlbcl <- psi_sra_dlbcl %>% 
+  left_join(md_sra_dlbcl, by=c("sample_id" = "rail_id"))
+
+boxplot(psi_sra_dlbcl$psi ~ psi_sra_dlbcl$treatment, main = "psi by treat", xlab = "treat", ylab = "psi")
+boxplot(psi_sra_dlbcl$psi ~ psi_sra_dlbcl$`chemotherapy cycles`, main = "psi by chemo cycles", xlab = "chemo cycles", ylab = "psi")
+boxplot(psi_sra_dlbcl$psi ~ psi_sra_dlbcl$ipi, main = "psi by ipi dose", xlab = "ipi dose", ylab = "psi")
 
 ```
+```{r}
+#cd19 <- QueryBuilder(compilation="srav3h", regions="chr16:28931971-28939342") %>%
+#set_row_filters(strand == "+")
+#results <- snapcount::query_jx(cd19)
+#read_counts <- assay(results, "counts")
+md_blood <- md_gtex |> 
+  semi_join(psi_gtex_blood, by=c("rail_id"="sample_id"))
+psi_gtex_blood <- psi_gtex_blood |> 
+  left_join(md_gtex, by = c("sample_id" = "rail_id"))
+
+boxplot(psi_gtex_blood$psi ~ psi_gtex_blood$SEX, main = "psi by sex", xlab = "sex", ylab = "psi")
+boxplot(psi_gtex_blood$psi ~ psi_gtex_blood$AGE, main = "psi by age", xlab = "age", ylab = "psi")
+```
+```{r}
+boxplot(psi_DLBCL$psi ~ psi_DLBCL$gender, main = "psi by sex", xlab = "sex", ylab = "psi")
+boxplot(psi_DLBCL$psi ~ psi_DLBCL$vital, main = "psi by vitality", xlab = "vitality", ylab = "psi")
+plot(psi_DLBCL$psi ~ psi_DLBCL$age, main = "psi by age", xlab = "age", ylab = "psi")
+boxplot(psi_DLBCL$psi ~ psi_DLBCL$tumor_status, main = "psi by status", xlab = "status", ylab = "psi")
+boxplot(psi_DLBCL$psi ~ psi_DLBCL$, main = "psi by status", xlab = "status", ylab = "psi")
+```
+

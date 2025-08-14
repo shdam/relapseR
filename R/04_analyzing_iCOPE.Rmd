@@ -66,29 +66,44 @@ cat("```sh\n", paste(file_content, collapse = "\n"), "\n```", sep = "")
 library(ggplot2)
 library(dplyr)
 library(readr)
+library(pbmcapply)
 
 # Get a list of all files in the directory structure
 # all_files <- list.files(path = "../data/iCOPE/outrigger", recursive = TRUE, full.names = TRUE, pattern = ".*outrigger_summary.csv")
 all_files <- list.files(path = "~/mnt/cr2/data/iCOPE/outrigger/", recursive = TRUE, full.names = TRUE, pattern = ".*outrigger_summary.csv")
 
 # Read, filter, and combine all matching files into a single data frame
-exon2_data <- lapply(all_files, read_csv, show_col_types = FALSE, col_select = c(2:7), name_repair = "minimal") %>%
+exon2_data <- pbmclapply(all_files, read_csv, show_col_types = FALSE, col_select = c(2:7), name_repair = "minimal", mc.cores = 5) %>%
   bind_rows()
+
+ID_immunophenotype <-
+  readr::read_delim("../materials/RNAseqID_immunophenotype.csv", 
+                    delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE) |> 
+  filter(immunophenotype == "B-precursor") |> 
+  mutate(full_ID = stringr::str_remove_all(full_ID, pattern = "\\.PST02"))
+
+exon2_data <- exon2_data |> 
+  mutate(sample_id = stringr::str_remove_all(sample_id, pattern = "_$")) |> 
+  semi_join(ID_immunophenotype, by = c("sample_id" = "full_ID"))
+
 samples <- unique(exon2_data$sample_id)
+
+# Remove failed samples
+samples <- samples[!stringr::str_starts(samples, "(23944|21191|20015|19603)")]
 
 # Add PSI=1 samples
 delta_exon2 <- exon2_data |> 
-  filter(grepl("16:28932089-28932910", event_id)) |> 
-  mutate(psi = tidyr::replace_na(psi, 1))
+  filter(grepl("16:28932089-28932910", event_id)) #|> 
+  # mutate(psi = tidyr::replace_na(psi, 1))
   # select(sample_id, isoform1_junction13, psi)
-delta_exon2 <- delta_exon2 |> 
+delta_exon2 <- delta_exon2 |>
   bind_rows(
     data.frame(
-      sample_id = samples[!samples %in% delta_exon2$sample_id],
-      psi = 1,
-      isoform1_junction13 = 0
-    )
+    sample_id = samples[!samples %in% delta_exon2$sample_id],
+    psi = 1,
+    isoform1_junction13 = 0
   )
+)
 saveRDS(delta_exon2, file = "../data/psi_icope.RDS")
 
 # Plot the PSI distribution
@@ -108,6 +123,7 @@ ggplot(delta_exon2, aes(x = isoform1_junction13)) +
        y = "Counts") +
   ggpubr::theme_pubr(base_size = 16)
 
+# 21370_000000.T.T02.S2 - 13 check - 0.9196787
 ```
 
 
@@ -156,4 +172,33 @@ delta_exon2 |>
   ggpubr::theme_pubr(base_size = 16)
 
 
+```
+
+## Sashimi
+
+```{r, eval=FALSE}
+
+ID_immunophenotype |> 
+  mutate(ID = stringr::str_remove_all(full_ID, ".T.T02.S2"),
+         File = paste0("/home/projects/dp_immunoth/data/iCOPE/mapped/", full_ID, "_Aligned.sortedByCoord.out.bam"),
+         Patient = ID,
+         Color = "#4EEE94") |> 
+  select(ID, File, Patient, Color) |> 
+  write_tsv("~/mnt/cr2/people/s153398/relapseR/data/icope_bam_list.tsv")
+
+ID_immunophenotype |> 
+  anti_join(delta_exon2, by = c("full_ID" = "sample_id")) |> 
+  mutate(ID = stringr::str_remove_all(full_ID, ".T.T02.S2"),
+         File = paste0("/home/projects/dp_immunoth/data/iCOPE/mapped/", full_ID, "_Aligned.sortedByCoord.out.bam"),
+         Patient = ID,
+         Color = "#4EEE94") |> 
+  select(ID, File, Patient, Color) |> 
+  write_tsv("~/mnt/cr2/people/s153398/relapseR/data/icope_nopsi_bam_list.tsv")
+
+```
+
+```{sh, eval=FALSE}
+python ggsashimi.py -b ../relapseR/data/icope_bam_list.tsv -c 16:28931696-28933634 -o ../relapseR/figs/sashimi_icope_all -g /home/projects/dp_immunoth/data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf -L 3 -C 4 --base-size 22 --width 22
+
+python ggsashimi.py -b ../relapseR/data/icope_nopsi_bam_list.tsv -c 16:28931696-28933634 -o ../relapseR/figs/sashimi_icope_nopsi -g /home/projects/dp_immunoth/data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf -L 3 -C 4 --base-size 22 --width 22
 ```

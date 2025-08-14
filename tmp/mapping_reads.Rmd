@@ -1,0 +1,711 @@
+---
+title: "Mapping raw reads"
+author: "Søren Helweg Dam"
+date: "2022-08-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The data 
+
+Data used is from [Zhang et. al, 2019](https://doi.org/10.1016/j.gpb.2018.12.008).
+
+
+### Downloading the data
+
+Raw reads
+
+```{sh, eval=FALSE}
+
+for id in {1..8}
+do
+  wget ftp://download.big.ac.cn/gsa/CRA000746/CRR02597${id}/CRR02597${id}_f1.fq.gz
+  wget ftp://download.big.ac.cn/gsa/CRA000746/CRR02597${id}/CRR02597${id}_r2.fq.gz
+done
+```
+
+
+## fastp preprocessing
+
+```{sh}
+alias fastp='/home/ctools/fastp/fastp'
+mkdir trimmed
+
+for id in {1..8}
+do
+forward=CRR02597${id}_f1.fq.gz
+reverse=CRR02597${id}_r2.fq.gz
+
+fastp -i fastq/$forward -I fastq/$reverse -o trimmed/$forward -O trimmed/$reverse --detect_adapter_for_pe -c --cut_front --cut_right
+done
+
+```
+
+
+
+
+[Ensembl Transcriptomes v96](https://github.com/pachterlab/kallisto-transcriptome-indices/releases)
+
+```{sh, eval=FALSE}
+wget https://github.com/pachterlab/kallisto-transcriptome-indices/releases/download/ensembl-96/homo_sapiens.tar.gz
+
+tar -xf homo_sapiens.tar.gz
+
+rm homo_sapiens.tar.gz
+ 
+```
+
+## STAR ----
+
+```{sh}
+# Download assembly reference
+cd homo_sapiens
+# wget ftp://ftp.ensembl.org/pub/release-77/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+wget http://ftp.ensembl.org/pub/release-107/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa.gz
+
+wget http://ftp.ensembl.org/pub/release-107/gtf/homo_sapiens/Homo_sapiens.GRCh38.107.gtf.gz
+
+gunzip *.gz
+
+mkdir ../ref
+
+# Index genome
+STAR --runMode genomeGenerate --genomeDir ../ref/ --genomeFastaFiles Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa --sjdbGTFfile Homo_sapiens.GRCh38.107.gtf --runThreadN 8
+
+mkdir mapped
+cd trimmed
+for id in {1..8}
+do
+forward=CRR02597${id}_f1.fq.gz
+reverse=CRR02597${id}_r2.fq.gz
+STAR --runMode alignReads --runThreadN 8 --genomeDir ../ref/ --outSAMtype BAM SortedByCoordinate --readFilesIn ${forward} ${reverse} --readFilesCommand gunzip -c --outFileNamePrefix ../mapped/CRR02597${id}
+done
+
+cd ../mapped
+mkdir ../bam
+mv *.bam ../bam
+cd ../bam
+for file in *.bam
+do
+samtools index $file
+done
+```
+
+## BAM ----
+
+```{sh}
+echo "ID  File  Patient Color
+CRR025973	/home/projects/shd/relapseR/raw_data/bam/CRR025973Aligned.sortedByCoord.out.bam	Patient_A	1
+CRR025971	/home/projects/shd/relapseR/raw_data/bam/CRR025971Aligned.sortedByCoord.out.bam	Patient_B	3
+CRR025977	/home/projects/shd/relapseR/raw_data/bam/CRR025977Aligned.sortedByCoord.out.bam	Patient_C	5
+CRR025975	/home/projects/shd/relapseR/raw_data/bam/CRR025975Aligned.sortedByCoord.out.bam	Patient_D	7
+CRR025974	/home/projects/shd/relapseR/raw_data/bam/CRR025974Aligned.sortedByCoord.out.bam	Patient_A	2
+CRR025972	/home/projects/shd/relapseR/raw_data/bam/CRR025972Aligned.sortedByCoord.out.bam	Patient_B	4
+CRR025978	/home/projects/shd/relapseR/raw_data/bam/CRR025978Aligned.sortedByCoord.out.bam	Patient_C	6
+CRR025976	/home/projects/shd/relapseR/raw_data/bam/CRR025976Aligned.sortedByCoord.out.bam	Patient_D	8" > /home/projects/shd/relapseR/raw_data/bam/bam_list.tsv
+# rm /home/projects/shd/relapseR/raw_data/bam/bam_list.tsv
+# vim /home/projects/shd/relapseR/raw_data/bam/bam_list.tsv
+```
+
+
+## Count mapped reads
+
+```{sh}
+for file in *.bam
+do 
+samtools view -c -F 4 $file
+done
+```
+
+
+## Sashimi plot
+
+```{sh}
+cd /home/projects/shd/tools/
+
+echo "#4EEE94
+#FF0000
+#FFA500
+#0000FF
+#8FBC8F
+#CD6090
+#EECFA1
+#9FB6CD" > ../relapseR/raw_data/bam/colors.tsv
+
+python ggsashimi.py -b ../relapseR/raw_data/bam/bam_list.tsv -c 16:28931696-28933634 -o ../relapseR/figs/sashimi -g ../relapseR/raw_data/homo_sapiens/Homo_sapiens.GRCh38.107.gtf -L 3 -P ../relapseR/raw_data/bam/colors.tsv -C 4 --base-size 22
+
+```
+
+
+
+## Junction identification
+
+```{sh}
+ref=homo_sapiens/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa
+
+for id in {1..8}
+do
+file=bam/*${id}A*.bam
+# portcullis full -t 8 $ref $file -o portcullis/CRR02597${id}
+
+# Regtools annotate junctions
+regtools junctions annotate -S -o portcullis/CRR02597${id}/annotated_junctions.tsv portcullis/CRR02597${id}/3-filt/portcullis_filtered.pass.junctions.bed homo_sapiens/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa homo_sapiens/Homo_sapiens.GRCh38.107.gtf
+done
+
+junctool set --union 
+
+
+
+
+
+
+```
+
+
+
+
+## Exon counts ----
+
+```{r, eval=FALSE}
+
+# https://nov2020.archive.ensembl.org/Homo_sapiens/Transcript/Exons?db=core;g=ENSG00000177455;r=16:28931965-28939342;t=ENST00000565089
+annotation <- data.frame(
+  GeneID = c("CD19:Exon1", "CD19:Exon2", "CD19:Exon3", "CD19:Exon4"),
+  Chr = "chr16",
+  Start = c(28931965, 28932346,28932910, 28933234),
+  End = c(28932088, 28932612, 28933114, 28933509),
+  Strand = "+",
+  stringsAsFactors = FALSE
+)
+annotation
+
+
+library("Rsubread")
+
+files <- list.files("raw_data/bam/", pattern = "*.bam$", full.names = TRUE)
+
+exon_counts <- featureCounts(
+  files = files,
+  annot.ext = annotation,
+  isPairedEnd=TRUE,
+  nthreads = 8,
+  juncCounts = TRUE
+  )
+
+saveRDS(exon_counts, "raw_data/exon_counts.RDS")
+exon_counts <- readRDS("raw_data/exon_counts.RDS")
+
+library("dplyr")
+library("tidyr")
+counts <- tibble::as_tibble(exon_counts$counts, rownames = "exon")
+colnames(counts) <- c("Exon", "B0", "B14", "A0", "A14", "D0", "D14", "C0", "C14")
+
+counts %>% 
+  pivot_longer(cols = -Exon, names_to = "Patient", values_to = "Counts") %>% 
+  pivot_wider(names_from = "Exon", values_from = Counts) %>% 
+  mutate(PSI = `CD19:Exon2`/(`CD19:Exon1` + `CD19:Exon2` + `CD19:Exon3` + `CD19:Exon4`),
+         Response = c("NR", "NR", "Relapse", "Relapse", "Remission", "Remission", "Relapse", "Relapse")) %>% 
+  arrange(Patient)
+
+```
+
+## Snapcount
+
+```{r}
+# https://www.ensembl.org/Homo_sapiens/Transcript/Exons?db=core;g=ENSG00000177455;r=16:28931971-28939342;t=ENST00000538922
+library("snapcount")
+library("magrittr")
+library("dplyr")
+library("ggplot2")
+
+A <- QueryBuilder(compilation = "srav2", region = "chr16:28931965-28933114") %>% 
+  set_row_filters(strand == "+") %>% set_coordinate_modifier(Coordinates$Within)
+
+B <- QueryBuilder(compilation = "srav2", region = "chr16:28932346-28932612") %>% 
+  set_row_filters(strand == "+") %>% set_coordinate_modifier(Coordinates$Within)
+
+jir <- junction_inclusion_ratio(list(A),
+                              list(B),
+                              group_names=c("groupA","groupB"))
+
+## TCGA - intron2
+#left inclusion query
+lqi2 <- QueryBuilder(compilation="tcga",  regions="chr16:28932346-28932612") %>%  # Exon2
+  # set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Within)
+#right inclusion query
+rqi2 <- QueryBuilder(compilation="tcga", regions="chr16:28932911-28933114") %>% # Exon3
+  # set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Within)
+#exclusion query
+exi2 <- QueryBuilder(compilation="tcga", regions="chr16:28932613-28932910") %>% # Intron2
+  # set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Within)
+
+psi_tcgai2 <- percent_spliced_in(list(lqi2), list(rqi2), list(exi2), min_count=20)
+
+jir <- junction_inclusion_ratio(list(rqi2),
+                              list(exi2),
+                              group_names=c("groupA","groupB"))
+# 28932615
+
+## TCGA
+#Build new query against GTEx
+#left inclusion query
+lq <- QueryBuilder(compilation="tcga", regions="chr16:28931971-28932088") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#right inclusion query
+rq <- QueryBuilder(compilation="tcga", regions="chr16:28932613-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#exclusion query
+ex <- QueryBuilder(compilation="tcga", regions="chr16:28932089-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+
+psi_tcga <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
+#order by psi descending
+
+
+## TCGA
+#Build new query against GTEx
+#left inclusion query
+lq <- QueryBuilder(compilation="tcga", regions="chr16:28932089-28932345") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#right inclusion query
+rq <- QueryBuilder(compilation="tcga", regions="chr16:28932613-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#exclusion query
+ex <- QueryBuilder(compilation="tcga", regions="chr16:28932089-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+
+psi_tcga <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
+
+jir2 <- junction_inclusion_ratio(list(lq),
+                              list(ex),
+                              group_names=c("groupA","groupB"))
+#order by psi descending
+# psi <- psi[order(-psi),]
+# head(psi)
+
+
+
+
+
+
+md <- snapcount:::get_compilation_metadata(compilation = "tcga")
+metadata <- tibble::tibble(sample_id = md$rail_id, 
+                           Cancer=md$gdc_cases.tissue_source_site.project,
+                           project = md$gdc_cases.project.project_id,
+                           Tissue = md$gdc_cases.project.primary_site,
+                           sample_code = md$gdc_cases.samples.submitter_id,
+                           gender = md$gdc_cases.demographic.gender,
+                           outcome = md$cgc_case_primary_therapy_outcome_success,
+                           tumor_status = md$cgc_case_tumor_status,
+                           age = md$xml_age_at_initial_pathologic_diagnosis,
+                           vital = md$cgc_case_vital_status) |> 
+  dplyr::filter(
+    stringr::str_detect(stringr::str_to_lower(Cancer), "lymph")
+    ) 
+
+# filter(metadata, stringr::str_detect(stringr::str_to_lower(Cancer), "lymphoma"))
+
+
+psi_BALL <- psi_tcga %>% 
+  dplyr::filter(psi != -1) %>% 
+  semi_join(metadata, by="sample_id") %>% 
+  left_join(metadata, by="sample_id") %>% 
+  mutate(type = "TCGA DLBCL")
+View(psi_BALL)
+
+# Sample data
+psi_low <- dplyr::filter(psi_BALL$psi < 0.95)
+psi_high <- dplyr::filter(psi_BALL, psi >= 0.95)
+group <- c(rep("Low", 50), rep("Group2", 50))
+
+ages <- c(rnorm(50, mean = 30, sd = 5), rnorm(50, mean = 35, sd = 6))
+
+# Boxplot
+boxplot(ages ~ group, main = "Age Distribution by Group", xlab = "Group", ylab = "Age")
+
+
+psi_tcga_all <- psi_tcga %>% filter(psi != -1) %>% anti_join(metadata, by="sample_id") %>% mutate(type = "TCGA (Remaining)")
+
+## GTEx
+#Build new query against GTEx
+#left inclusion query
+lq <- QueryBuilder(compilation="gtexv2", regions="chr16:28932089-28932345") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#right inclusion query
+rq <- QueryBuilder(compilation="gtexv2", regions="chr16:28932613-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#exclusion query
+ex <- QueryBuilder(compilation="gtexv2", regions="chr16:28932089-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+
+psi_gtex <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
+#order by psi descending
+# psi <- psi[order(-psi),]
+# head(psi)
+
+# psi_gtex %>% filter(psi != -1) %>% pull(psi) %>% qplot
+
+psi_BALLi2 <- jir %>% 
+  # dplyr::filter(psi != -1) %>% 
+  semi_join(metadata, by="sample_id") %>% 
+  left_join(metadata, by="sample_id") %>% 
+  mutate(type = "TCGA DLBCL")
+jir_BALL <- jir2 %>% 
+  # dplyr::filter(psi != -1) %>% 
+  semi_join(metadata, by="sample_id") %>% 
+  left_join(metadata, by="sample_id") %>% 
+  mutate(type = "TCGA DLBCL")
+hist(jir_BALL$jir)
+
+ts <- tissue_specificity(list(lq,rq, ex))
+blood_sample <- ts %>% filter(tissue == "Blood")
+bm_sample <- ts %>% filter(tissue == "Bone Marrow")
+spleen_sample <- ts %>% filter(tissue == "Spleen")
+
+
+psi_gtex_blood <- psi_gtex %>% filter(psi != -1) %>% 
+  semi_join(blood_sample, by="sample_id") %>% 
+  mutate(type = "GTEx Blood")
+
+psi_gtex_bm <- psi_gtex %>% filter(psi != -1) %>% 
+  semi_join(blood_sample, by="sample_id") %>% 
+  mutate(type = "GTEx Bone Marrow")
+
+
+psi_gtex_spleen <- psi_gtex %>% filter(psi != -1) %>% 
+  semi_join(spleen_sample, by="sample_id") %>% 
+  mutate(type = "GTEx Spleen")
+
+
+## SRA
+
+md_sra <- snapcount:::get_compilation_metadata(compilation = "srav3h") |> 
+  dplyr::filter(library_layout == "paired")
+
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "B-ALL")) |> dim()
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "DLBCL")) |> dim()
+md_sra |> dplyr::filter(stringr::str_detect(study_title, "lymph node")) |> dim()
+
+
+lq <- QueryBuilder(compilation="srav3h", regions="chr16:28932089-28932345") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#right inclusion query
+rq <- QueryBuilder(compilation="srav3h", regions="chr16:28932613-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+#exclusion query
+ex <- QueryBuilder(compilation="srav3h", regions="chr16:28932089-28932910") %>% 
+  set_row_filters(strand == "+") %>% 
+  set_coordinate_modifier(Coordinates$Exact)
+
+psi_sra <- percent_spliced_in(list(lq), list(rq), list(ex), min_count=20)
+
+md_sra_ball <- md_sra |> 
+  dplyr::filter(stringr::str_detect(study_title, "B-ALL"))
+psi_sra_ball <- psi_sra %>% 
+  dplyr::filter(psi != -1) %>% 
+  semi_join(md_sra_ball, by=c("sample_id" = "rail_id")) %>% 
+  mutate(type = "SRA B-ALL")
+
+md_sra_aml <- md_sra |> 
+  dplyr::filter(stringr::str_detect(study_title, "AML"))
+psi_sra_aml <- psi_sra %>% 
+  dplyr::filter(psi != -1) %>%
+  semi_join(md_sra_aml, by=c("sample_id" = "rail_id")) %>% 
+  mutate(type = "SRA AML")
+
+md_sra_dlbcl <- md_sra |> 
+  dplyr::filter(stringr::str_detect(study_title, "DLBCL"))
+psi_sra_dlbcl <- psi_sra %>% 
+  dplyr::filter(psi != -1) %>%
+  semi_join(md_sra_dlbcl, by=c("sample_id" = "rail_id")) %>% 
+  mutate(type = "SRA DLBCL")
+
+
+library(ggridges)
+colors <- c("hotpink3", "darkblue", "slategray", "red", "purple", "slategray", "darkblue")
+psi_plot <- #psi_tcga_all %>% 
+  psi_BALL %>%
+  # bind_rows(psi_sra_ball) |>
+  # bind_rows(psi_sra_aml) |>
+  # bind_rows(psi_sra_dlbcl) |>
+  # anti_join(psi_BALL, by = "sample_id") %>%
+  bind_rows(psi_BALL) %>%
+  bind_rows(psi_BALLi2) %>%
+  bind_rows(psi_gtex_blood) %>%
+  bind_rows(psi_gtex_spleen) %>%
+  # bind_rows(psi_gtex %>% filter(psi != -1) %>% anti_join(blood_sample, by="sample_id") %>% mutate(type = "GTEx (Remaining)")) %>%
+  ggplot()+
+  aes(x = psi, fill = type, color = type, y = type) +
+  # geom_histogram() +
+  geom_density_ridges(alpha = 0.4, quantile_lines = TRUE, quantiles = 2) +
+  theme_classic(base_size = 18) +
+  scale_fill_manual(values = colors) +
+  scale_color_manual(values = colors) +
+  labs(color = "Tissue",
+       fill = "Tissue",
+       x = "Fraction of CD19 transcripts containing Exon2.",
+       y = "") +
+  theme(legend.position="none") +
+  xlim(0.6, 1.05)
+psi_plot
+ggsave(psi_plot, filename = "../figs/PSI_TCGA.png", width = 10, height = 4)
+
+```
+
+
+## TCGA download
+
+### Metadata
+
+```{sh}
+wget https://tcga-xena-hub.s3.us-east-1.amazonaws.com/download/survival%2FDLBC_survival.txt
+```
+```{r}
+md <- readr::read_table("GDCdata/survival%2FDLBC_survival.txt")
+
+seed=555
+md <- md %>% 
+  slice_sample(n=10)
+barcodes <- md$sample
+```
+
+# PSI
+
+```{r}
+library(TCGAbiolinks)
+
+query <- GDCquery(
+    project = "TCGA-DLBC",
+    data.category = "Gene expression",
+    data.type = "Exon quantification",
+    # platform = "Illumina HiSeq",
+    # file.type  = "normalized_results",
+    # experimental.strategy = "RNA-Seq",
+    barcode = metadata$sample_code,
+    legacy = TRUE
+)
+GDCdownload(
+    query = query,
+    method = "api"
+)
+data <- GDCprepare(query = query,
+                   directory = "GDCdata")
+psi <- tibble::as_tibble(
+  SummarizedExperiment::assay(
+  data[rownames(data) %in% c("chr16:28943260-28943409:+", "chr16:28943667-28943933:+", "chr16:28944232-28944435:+"),]
+  )
+) %>% 
+  mutate(exon = c("CD19:Exon1","CD19:Exon2","CD19:Exon3")) %>% 
+  tidyr::pivot_longer(starts_with("TCGA"), names_to = "sample", values_to = "counts") %>% 
+  tidyr::pivot_wider(names_from = exon, values_from = counts) %>% 
+  mutate(PSI = `CD19:Exon2`/(`CD19:Exon1`+`CD19:Exon2`+`CD19:Exon3`))
+
+psi <- psi %>% 
+  mutate(patient = colData(data)$patient) %>% 
+  left_join(md, by = c("patient" = "_PATIENT"))
+
+psi %>% 
+  ggplot()+
+  aes(x = PSI, y = DFI.time, color = DFI) +
+  geom_point()
+
+```
+```{r}
+
+folders <- list.files("GDCdata/TCGA-DLBC/legacy/Gene_expression/Exon_junction_quantification", full.names = T)
+
+
+lapply(folders, function(folder){
+  
+  system(paste0("cat ", folder, "/*.txt | grep chr16 > ", basename(folder), ".txt"))
+  
+})
+
+junction_counts <- tibble::tibble(junction = c(), raw_counts=c(), sample=c())
+data <- lapply(folders, function(folder){
+  
+  junction_counts <- paste0(basename(folder), ".txt") %>% 
+    readr::read_table(col_names = c("junction", "raw_counts")) %>% 
+    mutate(sample = basename(folder))
+  return(junction_counts)
+}) %>% 
+  bind_rows()
+
+filter(data, stringr::str_detect(junction, ":2894"),
+       # stringr::str_detect(junction, "-", negate = T))
+       raw_counts > 0)
+```
+
+
+
+
+## fastQC
+
+
+```{sh}
+
+cd raw_data
+for file in *.fq.gz
+do
+  fastqc $file -o qc
+done
+
+```
+
+
+
+## Kallisto ----
+
+[Manual](http://pachterlab.github.io/kallisto/manual.html)
+
+
+Quantify raw reads
+
+```{sh eval=FALSE}
+
+index="homo_sapiens/transcriptome.idx"
+<!-- gtf="homo_sapiens/Homo_sapiens.GRCh38.96.gtf" -->
+
+kallisto quant -i $index -o patient_A0 CRR025973_f1.fq.gz CRR025973_r2.fq.gz
+
+kallisto quant -i $index -o patient_A14 CRR025974_f1.fq.gz CRR025974_r2.fq.gz
+
+kallisto quant -i $index -o patient_B0 CRR025971_f1.fq.gz CRR025971_r2.fq.gz
+
+kallisto quant -i $index -o patient_B14 CRR025972_f1.fq.gz CRR025972_r2.fq.gz
+
+kallisto quant -i $index -o patient_C0 CRR025977_f1.fq.gz CRR025977_r2.fq.gz
+
+kallisto quant -i $index -o patient_C14 CRR025978_f1.fq.gz CRR025978_r2.fq.gz
+
+kallisto quant -i $index -o patient_D0 CRR025975_f1.fq.gz CRR025975_r2.fq.gz
+
+kallisto quant -i $index -o patient_D14 CRR025976_f1.fq.gz CRR025976_r2.fq.gz
+
+```
+
+Convert 
+
+
+## Import into R
+
+```{r, eval=FALSE}
+library(IsoformSwitchAnalyzeR)
+library(magrittr)
+
+kallistoQuant <- importIsoformExpression(
+    parentDir = "raw_data/samples")
+
+# Add genes
+tx_gene <- readr::read_tsv("raw_data/homo_sapiens/transcripts_to_genes.tsv", col_names = c("transcript", "ensembl_gene", "gene"))
+
+# Create count matrix
+tx_count <- kallistoQuant$counts %>% 
+  dplyr::left_join(tx_gene, by = c("isoform_id" = "transcript")) %>% 
+  tidyr::unite(col = "gene_tx", gene, isoform_id, sep = ":") %>% 
+  dplyr::select(-ensembl_gene) %>% 
+  tibble::column_to_rownames("gene_tx") %>% 
+  as.matrix() %>% 
+  ceiling()
+
+# Create sample data
+sampleData <- data.frame(
+    sampleID = colnames(tx_count),
+    group = colnames(tx_count) %>% 
+      stringr::str_extract("[A-D]\\d+") %>% 
+      factor(),
+    patients = colnames(tx_count) %>% 
+      stringr::str_extract("[A-D]")
+)
+
+
+
+```
+
+
+```{r}
+
+
+
+devtools::load_all("../shd_pairedGSEA/")
+
+paired_A <- pairedGSEA::paired_diff(
+  object = tx_count,
+  metadata = sampleData,
+  group_col = "group", 
+  sample_col = "sampleID",
+  baseline = "A0", 
+  case = "A14", 
+  experiment_title = "patient_A",
+  run_sva = FALSE)
+
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+tx_count <- kallistoQuant$counts %>% 
+  dplyr::left_join(tx_gene, by = c("isoform_id" = "transcript"))
+
+tx_count %>% as_tibble %>% 
+  dplyr::filter(gene == "CD19") %>% 
+  select(-ends_with("0"), -ensembl_gene, -gene)
+  # mutate(A_lfc = log2((patient_A14+1)/ (patient_A0+1)),
+  #        B_lfc = log2((patient_B14+1)/ (patient_B0+1)),
+  #        C_lfc = log2((patient_C14+1)/ (patient_C0+1)),
+  #        D_lfc = log2((patient_D14+1)/ (patient_D0+1))) %>% 
+  # select(-starts_with("patient"), -ensembl_gene)
+  pivot_longer(starts_with("patient"), names_to = "patient", values_to = "counts") %>% 
+  mutate()
+```
+
+
+* Identify transcripts missing exon 2, 3, or 4
+* Differential splicing analysis
+* IsoformSwitchAnalyzeR
+* 
+
+
+ENST00000538922
+
+ENST00000324662
+
+ENST00000567541
+
+ENST00000565089
+
+ENST00000567368
+
+ENST00000566890
+
+
+ENSE00001227623
+ENSE00001227618
+ENSE00003483648
+
+
+41 all
+89 none
+62 all
+22 all
+90 none
+68 none

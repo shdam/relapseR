@@ -265,15 +265,15 @@ psi_icope <- psi_icope |>
 
 ```{r}
 message("Creating PSI plot")
-colors <- c("hotpink3", "darkblue", "darkorange", "darkred", "darkgreen")
+colors <- c("hotpink3", "darkblue",  "darkred", "darkgreen")# "darkorange",
 psi_plot <- psi_icope %>%
   rbind(psi_gtex_blood) %>%
   rbind(psi_gtex_spleen) %>%
   # rbind(psi_DLBCL |>  select(all_of(colnames(psi_icope)), type)) %>%
   # rbind(psi_sra_mm) %>%
-  rbind(psi_sra_cll) %>%
+  # rbind(psi_sra_cll) %>%
   rbind(psi_sra_dlbcl) %>%
-  mutate(type = factor(type, levels = c("B-ALL", "DLBCL", "CLL", "MM", "Blood", "Spleen"))) |>  #, "CLL"
+  mutate(type = factor(type, levels = c("B-ALL", "DLBCL", "Blood", "Spleen"))) |>  #, "CLL", "MM"
   ggplot() +
   aes(x = psi*100, fill = type, color = type) +
   # aes(x = psi, y = type, fill = type, color = type) +
@@ -281,7 +281,7 @@ psi_plot <- psi_icope %>%
   geom_histogram(binwidth = 1, alpha = 0.7) +
   scale_y_continuous(n.breaks = 4) +
   # coord_cartesian(ylim = c(0, 50)) +
-  facet_wrap(~ type, scales = "free", ncol = 3) +
+  facet_wrap(~ type, scales = "free", ncol = 2) +
   theme_classic(base_size = 18) +
   scale_fill_manual(values = colors) +
   scale_color_manual(values = colors) +
@@ -294,10 +294,22 @@ psi_plot <- psi_icope %>%
   xlim(60, 105) 
   # ggpubr::theme_pubr()
 psi_plot
-ggsave(psi_plot, filename = "../figs/PSI_hist_full.pdf", width = 10, height = 10)
-# ggsave(psi_plot, filename = "../figs/PSI_SRA_full.png", width = 10, height = 10)
+# ggsave(psi_plot, filename = "../figs/PSI_hist_full.pdf", width = 10, height = 10)
+ggsave(psi_plot, filename = "../figs/PSI_full.png", width = 10, height = 10)
 ```
+### Percent below 1
 
+```{r}
+
+psi_icope %>%
+  rbind(psi_gtex_blood) %>%
+  rbind(psi_gtex_spleen) %>%
+  rbind(psi_sra_dlbcl) %>%
+  group_by(type) |> 
+  summarise(spliced_in = sum(psi < 1) / n())
+
+
+```
 
 
 ### RNA counts vs PSI
